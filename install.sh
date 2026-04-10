@@ -18,8 +18,11 @@ warn()    { echo -e "${YELLOW}!${NC} $*"; }
 error()   { echo -e "${RED}✗${NC} $*" >&2; exit 1; }
 
 echo ""
-echo -e "${BOLD}ducktape${NC} — tmux agent session manager"
-echo "────────────────────────────────────"
+echo -e "${BOLD}              _         _   _${NC}"
+echo -e "${BOLD}    __     __| |_  _ __| |_| |_ __ _ _ __  ___${NC}"
+echo -e "${BOLD} __( o)>  / _\` | || / _| / /  _/ _\` | '_ \/ -_)${NC}"
+echo -e "${BOLD} \ <_. )  \__,_|\_,_\__|_\_\\\__\__,_| .__/\___|${NC}"
+echo -e "${BOLD}  \`---'                              |_|${NC}"
 echo ""
 
 # ── 의존성 확인 ───────────────────────────

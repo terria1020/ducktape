@@ -1,5 +1,13 @@
 # ducktape
 
+```
+              _         _   _
+    __     __| |_  _ __| |_| |_ __ _ _ __  ___
+ __( o)>  / _` | || / _| / /  _/ _` | '_ \/ -_)
+ \ <_. )  \__,_|\_,_\__|_\_\\__\__,_| .__/\___|
+  `---'                              |_|
+```
+
 tmux-based AI agent session manager.
 Toggle attach/detach with a single key (F2), with automatic per-directory session management.
 
