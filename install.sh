@@ -1,10 +1,10 @@
 #!/bin/bash
 # ducktape installer
-# curl -fsSL https://raw.githubusercontent.com/jaehan1346/ducktape/main/install.sh | bash
+# curl -fsSL https://raw.githubusercontent.com/terria1020/ducktape/main/install.sh | bash
 
 set -euo pipefail
 
-REPO_RAW="https://raw.githubusercontent.com/jaehan1346/ducktape/main"
+REPO_RAW="https://raw.githubusercontent.com/terria1020/ducktape/main"
 ZSH_DIR="$HOME/.zsh"
 ZSH_SCRIPT="$ZSH_DIR/shell-agents-tmux.zsh"
 AGENT_CONF="$ZSH_DIR/.ducktape-agent"

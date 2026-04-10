@@ -6,7 +6,7 @@ F2 하나로 attach/detach 토글, 디렉토리별 세션 자동 관리.
 ## 설치
 
 ```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/jaehan1346/ducktape/main/install.sh)"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/terria1020/ducktape/main/install.sh)"
 ```
 
 ### 필요 조건

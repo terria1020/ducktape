@@ -6,7 +6,7 @@ Toggle attach/detach with a single key (F2), with automatic per-directory sessio
 ## Install
 
 ```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/jaehan1346/ducktape/main/install.sh)"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/terria1020/ducktape/main/install.sh)"
 ```
 
 ### Requirements
