@@ -5,6 +5,16 @@
 
 setopt PROMPT_SUBST
 
+# ─────────────────────────────────────────
+# tmux 의존성 guard — 없으면 조용히 비활성화
+# ─────────────────────────────────────────
+
+if ! command -v tmux &>/dev/null; then
+  print "⚠️  ducktape: tmux을 찾을 수 없습니다. 설치 후 다시 시도하세요." >&2
+  print "   brew install tmux" >&2
+  return 0
+fi
+
 _DUCKTAPE_CONF="$HOME/.zsh/.ducktape-agent"
 _DUCKTAPE_AGENT=$(cat "$_DUCKTAPE_CONF" 2>/dev/null || echo "claude")
 
