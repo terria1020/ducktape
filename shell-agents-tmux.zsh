@@ -1,0 +1,168 @@
+#######################
+# ~/.zsh/shell-agents-tmux.zsh
+# ducktape — F2 토글 (디렉토리별 세션)
+# F2: 쉘 → attach/신규, 에이전트 안 → detach (tmux.conf 담당)
+
+setopt PROMPT_SUBST
+
+_DUCKTAPE_CONF="$HOME/.zsh/.ducktape-agent"
+_DUCKTAPE_AGENT=$(cat "$_DUCKTAPE_CONF" 2>/dev/null || echo "claude")
+
+# ─────────────────────────────────────────
+# 세션 이름: ducktape-<agent>-<hash8>
+# ─────────────────────────────────────────
+
+_ducktape_session() {
+  local hash=$(print -n "$PWD" | shasum | awk '{print $1}')
+  print "ducktape-${_DUCKTAPE_AGENT}-${hash:0:8}"
+}
+
+# ─────────────────────────────────────────
+# F2 ZLE 위젯
+# ─────────────────────────────────────────
+
+_ducktape_f2_widget() {
+  local session=$(_ducktape_session)
+  if tmux has-session -t "$session" 2>/dev/null; then
+    BUFFER="tmux attach-session -t $session"
+  else
+    BUFFER="tmux new-session -d -s '$session' -c '$PWD' $_DUCKTAPE_AGENT && tmux attach-session -t '$session'"
+  fi
+  zle accept-line
+}
+
+zle -N _ducktape_f2_widget
+
+zmodload zsh/terminfo 2>/dev/null
+if [[ -n "${terminfo[kf2]}" ]]; then
+  bindkey -M emacs "${terminfo[kf2]}" _ducktape_f2_widget
+  bindkey -M viins "${terminfo[kf2]}" _ducktape_f2_widget
+fi
+bindkey -M emacs $'\eOQ' _ducktape_f2_widget
+bindkey -M viins $'\eOQ' _ducktape_f2_widget
+
+# ─────────────────────────────────────────
+# ducktape-alias — 에이전트 변경
+# ─────────────────────────────────────────
+
+ducktape-alias() {
+  local candidates=()
+  command -v claude  &>/dev/null && candidates+=(claude)
+  command -v gemini  &>/dev/null && candidates+=(gemini)
+  command -v codex   &>/dev/null && candidates+=(codex)
+  command -v cursor  &>/dev/null && candidates+=(cursor)
+
+  if [[ ${#candidates} -eq 0 ]]; then
+    print "✗ 설치된 에이전트 없음 (claude / gemini / codex / cursor)"
+    return 1
+  fi
+
+  local selected
+  if command -v fzf &>/dev/null; then
+    selected=$(printf '%s\n' $candidates | fzf --prompt="에이전트 선택> " --height=10)
+  else
+    print "설치된 에이전트:"
+    select agent in $candidates; do
+      selected=$agent; break
+    done
+  fi
+
+  [[ -z "$selected" ]] && print "취소됨" && return 0
+
+  print "$selected" > "$_DUCKTAPE_CONF"
+  _DUCKTAPE_AGENT="$selected"
+  print "✓ 에이전트 변경: $selected"
+  print "  새 터미널 또는 'source ~/.zsh/shell-agents-tmux.zsh' 후 적용"
+}
+
+# ─────────────────────────────────────────
+# ducktape-uninstall — 완전 제거
+# ─────────────────────────────────────────
+
+ducktape-uninstall() {
+  print "ducktape를 제거합니다..."
+
+  # 1. 모든 ducktape 세션 종료
+  local sessions
+  sessions=$(tmux ls 2>/dev/null | grep "^ducktape-" | awk -F: '{print $1}')
+  if [[ -n "$sessions" ]]; then
+    echo "$sessions" | xargs -I{} tmux kill-session -t {} 2>/dev/null
+    print "✓ tmux 세션 종료"
+  fi
+
+  # 2. 스크립트 파일 제거
+  rm -f "$HOME/.zsh/shell-agents-tmux.zsh"
+  rm -f "$_DUCKTAPE_CONF"
+  print "✓ 스크립트 제거"
+
+  # 3. .zshrc에서 ducktape 라인 제거
+  if [[ -f "$HOME/.zshrc" ]]; then
+    sed -i '' '/# ducktape/d' "$HOME/.zshrc"
+    sed -i '' '/shell-agents-tmux/d' "$HOME/.zshrc"
+    print "✓ .zshrc 정리"
+  fi
+
+  # 4. tmux.conf에서 ducktape 블록 제거
+  if [[ -f "$HOME/.tmux.conf" ]]; then
+    # ducktape 마커 사이 블록 삭제
+    sed -i '' '/^# ducktape$/,/^# \/ducktape$/d' "$HOME/.tmux.conf"
+    # 개별 바인딩 라인 제거 (마커 없이 추가된 경우)
+    sed -i '' '/bind-key -n F2 detach-client/d' "$HOME/.tmux.conf"
+    sed -i '' '/bind-key -n F12 run-shell/d' "$HOME/.tmux.conf"
+    sed -i '' '/tmp_restart/d' "$HOME/.tmux.conf"
+    sed -i '' '/pane_current_path/d' "$HOME/.tmux.conf"
+    sed -i '' '/session_name/d' "$HOME/.tmux.conf"
+    sed -i '' '/grep ducktape/d' "$HOME/.tmux.conf"
+    sed -i '' "/bind-key a display-popup.*ducktape/d" "$HOME/.tmux.conf"
+    tmux source-file "$HOME/.tmux.conf" 2>/dev/null || true
+    print "✓ tmux.conf 정리"
+  fi
+
+  print ""
+  print "✓ ducktape 제거 완료. 새 터미널을 여세요."
+}
+
+# ─────────────────────────────────────────
+# 유틸리티
+# ─────────────────────────────────────────
+
+ducktape-status() {
+  local session=$(_ducktape_session)
+  print "에이전트: $_DUCKTAPE_AGENT"
+  if tmux has-session -t "$session" 2>/dev/null; then
+    print "● 세션 실행 중 ($session)"
+  else
+    print "○ 세션 없음 ($PWD)"
+  fi
+}
+
+ducktape-kill() {
+  local session=$(_ducktape_session)
+  if tmux has-session -t "$session" 2>/dev/null; then
+    tmux kill-session -t "$session"
+    print "✓ 세션 종료 ($session)"
+  else
+    print "✗ 세션 없음"
+  fi
+}
+
+ducktape-ls() {
+  print "── ducktape sessions ──"
+  tmux ls 2>/dev/null | grep "^ducktape-" || print "(없음)"
+}
+
+# ─────────────────────────────────────────
+# 프롬프트 인디케이터
+# ─────────────────────────────────────────
+
+precmd_ducktape_indicator() {
+  local session=$(_ducktape_session)
+  if tmux has-session -t "$session" 2>/dev/null; then
+    DUCKTAPE_INDICATOR="%F{magenta}●${_DUCKTAPE_AGENT}%f"
+  else
+    DUCKTAPE_INDICATOR=""
+  fi
+}
+precmd_functions+=(precmd_ducktape_indicator)
+
+PROMPT='${DUCKTAPE_INDICATOR:+$DUCKTAPE_INDICATOR }'"$PROMPT"
