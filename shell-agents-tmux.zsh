@@ -18,6 +18,14 @@ fi
 _DUCKTAPE_CONF="$HOME/.zsh/.ducktape-agent"
 _DUCKTAPE_AGENT=$(cat "$_DUCKTAPE_CONF" 2>/dev/null || echo "claude")
 
+# 표기명 → 실제 실행 커맨드 매핑
+_ducktape_cmd() {
+  case "$_DUCKTAPE_AGENT" in
+    cursor-cli) print "agent" ;;
+    *)          print "$_DUCKTAPE_AGENT" ;;
+  esac
+}
+
 # ─────────────────────────────────────────
 # 세션 이름: ducktape-<agent>-<hash8>
 # ─────────────────────────────────────────
@@ -36,7 +44,7 @@ _ducktape_f2_widget() {
   if tmux has-session -t "$session" 2>/dev/null; then
     BUFFER="tmux attach-session -t $session"
   else
-    BUFFER="tmux new-session -d -s '$session' -c '$PWD' $_DUCKTAPE_AGENT && tmux attach-session -t '$session'"
+    BUFFER="tmux new-session -d -s '$session' -c '$PWD' $(_ducktape_cmd) && tmux attach-session -t '$session'"
   fi
   zle accept-line
 }
@@ -60,10 +68,11 @@ ducktape-alias() {
   command -v claude  &>/dev/null && candidates+=(claude)
   command -v gemini  &>/dev/null && candidates+=(gemini)
   command -v codex   &>/dev/null && candidates+=(codex)
+  command -v agent   &>/dev/null && candidates+=(cursor-cli)
   command -v cursor  &>/dev/null && candidates+=(cursor)
 
   if [[ ${#candidates} -eq 0 ]]; then
-    print "✗ 설치된 에이전트 없음 (claude / gemini / codex / cursor)"
+    print "✗ 설치된 에이전트 없음 (claude / gemini / codex / cursor-cli / cursor)"
     return 1
   fi
 
