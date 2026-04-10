@@ -21,7 +21,7 @@ _DUCKTAPE_AGENT=$(cat "$_DUCKTAPE_CONF" 2>/dev/null || echo "claude")
 # 표기명 → 실제 실행 커맨드 매핑
 _ducktape_cmd() {
   case "$_DUCKTAPE_AGENT" in
-    cursor-cli) print "agent" ;;
+    cursor) print "agent" ;;
     *)          print "$_DUCKTAPE_AGENT" ;;
   esac
 }
@@ -68,11 +68,10 @@ ducktape-alias() {
   command -v claude  &>/dev/null && candidates+=(claude)
   command -v gemini  &>/dev/null && candidates+=(gemini)
   command -v codex   &>/dev/null && candidates+=(codex)
-  command -v agent   &>/dev/null && candidates+=(cursor-cli)
-  command -v cursor  &>/dev/null && candidates+=(cursor)
+  command -v agent   &>/dev/null && candidates+=(cursor)
 
   if [[ ${#candidates} -eq 0 ]]; then
-    print "✗ 설치된 에이전트 없음 (claude / gemini / codex / cursor-cli / cursor)"
+    print "✗ 설치된 에이전트 없음 (claude / gemini / codex / cursor)"
     return 1
   fi
 
