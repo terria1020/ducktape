@@ -86,6 +86,25 @@ rm ~/.zsh/shell-agents-tmux.zsh ~/.zsh/.ducktape-agent
 ~/.tmux.conf                   # F2 / F12 / Ctrl-B a bindings
 ```
 
+## Scroll Behavior
+
+ducktape enables mouse scrolling via tmux (`set -g mouse on`).
+
+**How it works:**
+- At the shell prompt: mouse wheel enters tmux copy mode, allowing scrollback through terminal history
+- Inside an agent: mouse scroll events are passed through to the agent's own UI (e.g. Claude Code handles its own scrolling)
+
+**Limitations:**
+
+| Situation | Behavior |
+|-----------|----------|
+| Agent uses alternate screen buffer (e.g. Claude Code) | tmux scrollback does **not** capture conversation history — only the agent's internal scroll works |
+| After agent exits | Conversation output is gone; tmux scrollback shows only what was on screen before the agent launched |
+| `Ctrl-B [` copy mode | Can scroll terminal history, but requires `q` to exit — not seamless |
+| Mouse event conflicts | If both tmux and the agent try to capture mouse events, behavior may vary by terminal emulator |
+
+> The fundamental constraint is that TUI agents use the **alternate screen buffer**, which tmux does not include in its scrollback history. This is a tmux architecture limitation, not specific to ducktape.
+
 ## Prompt Indicator
 
 When an active session exists for the current directory, it appears in your prompt:
