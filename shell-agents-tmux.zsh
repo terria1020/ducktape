@@ -17,13 +17,24 @@ fi
 
 _DUCKTAPE_CONF="$HOME/.zsh/.ducktape-agent"
 _DUCKTAPE_AGENT=$(cat "$_DUCKTAPE_CONF" 2>/dev/null || echo "claude")
+_DUCKTAPE_GLOBAL_PARAMS_FILE="$HOME/.zsh/.ducktape-params"
 
-# 표기명 → 실제 실행 커맨드 매핑
+# 표기명 → 실제 실행 커맨드 매핑 (글로벌 + 로컬 파라미터 포함)
 _ducktape_cmd() {
+  local agent
   case "$_DUCKTAPE_AGENT" in
-    cursor) print "agent" ;;
-    *)          print "$_DUCKTAPE_AGENT" ;;
+    cursor) agent="agent" ;;
+    *)      agent="$_DUCKTAPE_AGENT" ;;
   esac
+
+  local gp lp
+  gp=$(cat "$_DUCKTAPE_GLOBAL_PARAMS_FILE" 2>/dev/null)
+  lp=$(cat "$PWD/.ducktape-params" 2>/dev/null)
+
+  local cmd="$agent"
+  [[ -n "$gp" ]] && cmd="$cmd $gp"
+  [[ -n "$lp" ]] && cmd="$cmd $lp"
+  print "$cmd"
 }
 
 # ─────────────────────────────────────────
@@ -94,6 +105,77 @@ ducktape-alias() {
 }
 
 # ─────────────────────────────────────────
+# ducktape-param — 실행 파라미터 관리
+# ─────────────────────────────────────────
+
+ducktape-param() {
+  local scope="${1:-show}"
+
+  if [[ "$scope" == "show" ]]; then
+    local gp lp merged
+    gp=$(cat "$_DUCKTAPE_GLOBAL_PARAMS_FILE" 2>/dev/null)
+    lp=$(cat "$PWD/.ducktape-params" 2>/dev/null)
+    local merged="$gp"
+    [[ -n "$gp" && -n "$lp" ]] && merged="$gp $lp"
+    [[ -z "$gp" && -n "$lp" ]] && merged="$lp"
+    print "global: ${gp:-(없음)}"
+    print "local:  ${lp:-(없음)}  [$PWD]"
+    print "merged: ${merged:-(없음)}"
+    return 0
+  fi
+
+  local file
+  case "$scope" in
+    global) file="$_DUCKTAPE_GLOBAL_PARAMS_FILE" ;;
+    local)  file="$PWD/.ducktape-params" ;;
+    *)
+      print "사용법:"
+      print "  ducktape-param show"
+      print "  ducktape-param global add <파라미터...>"
+      print "  ducktape-param global set <파라미터...>"
+      print "  ducktape-param global clear"
+      print "  ducktape-param local  add <파라미터...>"
+      print "  ducktape-param local  set <파라미터...>"
+      print "  ducktape-param local  clear"
+      return 1
+      ;;
+  esac
+
+  local action="${2:-show}"
+  shift 2 2>/dev/null
+
+  case "$action" in
+    add)
+      local current
+      current=$(cat "$file" 2>/dev/null)
+      if [[ -n "$current" ]]; then
+        echo "$current $*" > "$file"
+      else
+        echo "$*" > "$file"
+      fi
+      print "✓ $scope 파라미터 추가: $*"
+      ;;
+    set)
+      echo "$*" > "$file"
+      print "✓ $scope 파라미터 설정: $*"
+      ;;
+    clear)
+      rm -f "$file"
+      print "✓ $scope 파라미터 초기화"
+      ;;
+    show)
+      local val
+      val=$(cat "$file" 2>/dev/null)
+      print "$scope: ${val:-(없음)}"
+      ;;
+    *)
+      print "✗ 알 수 없는 액션: $action (add / set / clear / show)"
+      return 1
+      ;;
+  esac
+}
+
+# ─────────────────────────────────────────
 # ducktape-uninstall — 완전 제거
 # ─────────────────────────────────────────
 
@@ -117,6 +199,7 @@ ducktape-uninstall() {
   # 2. 스크립트 파일 제거
   rm -f "$HOME/.zsh/shell-agents-tmux.zsh"
   rm -f "$_DUCKTAPE_CONF"
+  rm -f "$_DUCKTAPE_GLOBAL_PARAMS_FILE"
   print "✓ 스크립트 제거"
 
   # 3. .zshrc에서 ducktape 라인 제거
@@ -152,7 +235,12 @@ ducktape-uninstall() {
 
 ducktape-status() {
   local session=$(_ducktape_session)
+  local gp lp
+  gp=$(cat "$_DUCKTAPE_GLOBAL_PARAMS_FILE" 2>/dev/null)
+  lp=$(cat "$PWD/.ducktape-params" 2>/dev/null)
   print "에이전트: $_DUCKTAPE_AGENT"
+  print "  global params: ${gp:-(없음)}"
+  print "  local  params: ${lp:-(없음)}"
   if tmux has-session -t "$session" 2>/dev/null; then
     print "● 세션 실행 중 ($session)"
   else

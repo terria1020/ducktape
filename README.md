@@ -50,6 +50,7 @@ Each directory gets its own independent session.
 
 ```zsh
 ducktape-alias      # Switch agent interactively
+ducktape-param      # Manage run parameters (global / local)
 ducktape-status     # Show session status for current directory
 ducktape-ls         # List all ducktape sessions
 ducktape-kill       # Kill session for current directory
@@ -63,6 +64,41 @@ ducktape-alias
 # → Select from detected agents via fzf
 # → Takes effect in new terminals
 ```
+
+### Run Parameters
+
+Pass flags to the agent automatically on every launch.  
+Parameters have two scopes that are merged at runtime:
+
+| Scope | File | Applied when |
+|-------|------|--------------|
+| **global** | `~/.zsh/.ducktape-params` | every session, everywhere |
+| **local** | `.ducktape-params` in `$PWD` | sessions started from that directory |
+
+```zsh
+# Global — always use yolo mode
+ducktape-param global add --dangerously-skip-permissions
+
+# Local — this project uses a specific model
+ducktape-param local add --model claude-opus-4-5
+
+# Inspect merged result
+ducktape-param show
+# global: --dangerously-skip-permissions
+# local:  --model claude-opus-4-5  [~/my-project]
+# merged: --dangerously-skip-permissions --model claude-opus-4-5
+
+# Replace all global params at once
+ducktape-param global set --dangerously-skip-permissions --verbose
+
+# Clear
+ducktape-param global clear
+ducktape-param local clear
+```
+
+The local `.ducktape-params` file can be committed to a project repo or added to `.gitignore` — your choice.
+
+> **Note for existing installs:** the F12 restart binding in `~/.tmux.conf` was written at install time and does not auto-update. Re-run the installer to get the updated binding that reads params on restart.
 
 ## Uninstall
 
@@ -83,6 +119,8 @@ rm ~/.zsh/shell-agents-tmux.zsh ~/.zsh/.ducktape-agent
 ```
 ~/.zsh/shell-agents-tmux.zsh   # Main script
 ~/.zsh/.ducktape-agent         # Selected agent name
+~/.zsh/.ducktape-params        # Global run parameters (optional)
+$PWD/.ducktape-params          # Local run parameters per project (optional)
 ~/.tmux.conf                   # F2 / F12 / Ctrl-B a bindings
 ```
 
