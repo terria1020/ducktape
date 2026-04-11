@@ -50,6 +50,7 @@ F2 하나로 attach/detach 토글, 디렉토리별 세션 자동 관리.
 
 ```zsh
 ducktape-alias      # 에이전트 변경 (인터랙티브 선택)
+ducktape-param      # 실행 파라미터 관리 (글로벌/로컬)
 ducktape-status     # 현재 디렉토리 세션 상태 확인
 ducktape-ls         # 전체 ducktape 세션 목록
 ducktape-kill       # 현재 디렉토리 세션 종료
@@ -63,6 +64,41 @@ ducktape-alias
 # → 설치된 에이전트 목록에서 fzf로 선택
 # → 새 터미널부터 적용
 ```
+
+### 실행 파라미터 관리
+
+에이전트 실행 시 자동으로 붙일 플래그를 미리 설정합니다.  
+파라미터는 두 가지 범위로 관리되며, 실행 시 병합됩니다:
+
+| 범위 | 파일 | 적용 시점 |
+|------|------|-----------|
+| **global** | `~/.zsh/.ducktape-params` | 모든 세션에 항상 적용 |
+| **local** | `$PWD/.ducktape-params` | 해당 디렉토리에서 시작한 세션에만 적용 |
+
+```zsh
+# 글로벌 — 어디서든 yolo 모드로 실행
+ducktape-param global add --dangerously-skip-permissions
+
+# 로컬 — 이 프로젝트에서만 특정 모델 사용
+ducktape-param local add --model claude-opus-4-5
+
+# 병합 결과 확인
+ducktape-param show
+# global: --dangerously-skip-permissions
+# local:  --model claude-opus-4-5  [~/my-project]
+# merged: --dangerously-skip-permissions --model claude-opus-4-5
+
+# 글로벌 파라미터 전체 교체
+ducktape-param global set --dangerously-skip-permissions --verbose
+
+# 초기화
+ducktape-param global clear
+ducktape-param local clear
+```
+
+로컬 `.ducktape-params` 파일은 프로젝트 저장소에 커밋하거나 `.gitignore`에 추가해 관리할 수 있습니다.
+
+> **기존 설치 사용자 주의:** `~/.tmux.conf`의 F12 바인딩은 설치 시 한 번 기록되며 자동 업데이트되지 않습니다. 파라미터가 F12 재시작에도 적용되게 하려면 재설치가 필요합니다.
 
 ## 제거
 
@@ -83,6 +119,8 @@ rm ~/.zsh/shell-agents-tmux.zsh ~/.zsh/.ducktape-agent
 ```
 ~/.zsh/shell-agents-tmux.zsh   # 메인 스크립트
 ~/.zsh/.ducktape-agent         # 선택된 에이전트 저장
+~/.zsh/.ducktape-params        # 글로벌 실행 파라미터 (선택)
+$PWD/.ducktape-params          # 프로젝트별 로컬 파라미터 (선택)
 ~/.tmux.conf                   # F2/F12/Ctrl-B a 바인딩
 ```
 

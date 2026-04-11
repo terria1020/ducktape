@@ -104,10 +104,15 @@ set -g history-limit 100000
 bind-key -n F2 detach-client
 bind-key -n F12 run-shell '\
   AGENT=$(cat "$HOME/.zsh/.ducktape-agent" 2>/dev/null || echo claude); \
+  GPARAMS=$(cat "$HOME/.zsh/.ducktape-params" 2>/dev/null); \
   S=$(tmux display-message -p "#{session_name}"); \
   D=$(tmux display-message -p "#{pane_current_path}"); \
+  LPARAMS=$(cat "$D/.ducktape-params" 2>/dev/null); \
+  CMD="$AGENT"; \
+  [ -n "$GPARAMS" ] && CMD="$CMD $GPARAMS"; \
+  [ -n "$LPARAMS" ] && CMD="$CMD $LPARAMS"; \
   TMP="tmp_restart_$$"; \
-  tmux new-session -d -s "$TMP" -c "$D" "$AGENT"; \
+  tmux new-session -d -s "$TMP" -c "$D" sh -c "$CMD"; \
   tmux switch-client -t "$TMP"; \
   tmux kill-session -t "$S"; \
   tmux rename-session -t "$TMP" "$S"'
@@ -131,6 +136,7 @@ echo "  F12           → $SELECTED 재시작 (컨텍스트 초기화)"
 echo "  Ctrl-B a      → 세션 목록 fzf 피커"
 echo ""
 echo "  ducktape-alias     → 에이전트 변경"
+echo "  ducktape-param     → 실행 파라미터 관리 (글로벌/로컬)"
 echo "  ducktape-status    → 현재 세션 상태"
 echo "  ducktape-ls        → 전체 세션 목록"
 echo "  ducktape-kill      → 현재 디렉토리 세션 종료"
