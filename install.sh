@@ -118,6 +118,10 @@ bind-key -n F12 run-shell '\
   tmux rename-session -t "$TMP" "$S"'
 bind-key a display-popup -E \
   "tmux ls 2>/dev/null | grep ducktape | cut -d: -f1 | fzf --prompt='agent> ' --height=10 | xargs -I{} tmux switch-client -t {}"
+bind -T copy-mode MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy"
+bind -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy"
+bind -T copy-mode MouseDown1Pane send-keys -X clear-selection
+bind -T copy-mode-vi MouseDown1Pane send-keys -X clear-selection
 # /ducktape
 EOF
   success "tmux.conf 업데이트"
