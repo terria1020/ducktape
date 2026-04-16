@@ -96,6 +96,39 @@ _ducktape_prune_bound_paths() {
   return $changed
 }
 
+_ducktape_next_bound_label() {
+  local dir="$1"
+
+  local paths=()
+  local entry
+  while IFS= read -r entry; do
+    [[ -n "$entry" ]] && paths+=("$entry")
+  done < <(_ducktape_bound_paths)
+
+  (( ${#paths[@]} > 1 )) || {
+    print ""
+    return 0
+  }
+
+  local current_index=-1
+  local i
+  for (( i = 1; i <= ${#paths[@]}; i++ )); do
+    if [[ "${paths[i]}" == "$dir" ]]; then
+      current_index=$i
+      break
+    fi
+  done
+
+  (( current_index != -1 )) || {
+    print ""
+    return 0
+  }
+
+  local next_index=$(( current_index % ${#paths[@]} + 1 ))
+  local next_dir="${paths[next_index]}"
+  print "${next_dir:t}"
+}
+
 _ducktape_apply_theme() {
   local session="$1"
   local dir="$2"
@@ -119,11 +152,14 @@ _ducktape_apply_theme() {
   local idx=$(( seed % ${#dark_palette[@]} + 1 ))
   local status_bg="${dark_palette[idx]}"
   local accent_bg="${accent_palette[idx]}"
+  local curr_label="${dir:t}"
+  local next_label=$(_ducktape_next_bound_label "$dir")
 
   tmux set-option -t "$session" status-style "bg=${status_bg},fg=white" >/dev/null
   tmux set-option -t "$session" window-status-style "bg=${status_bg},fg=colour250" >/dev/null
   tmux set-option -t "$session" window-status-current-style "bg=${accent_bg},fg=black,bold" >/dev/null
   tmux set-option -t "$session" window-status-activity-style "bg=${status_bg},fg=${accent_bg},bold" >/dev/null
+  tmux set-option -t "$session" status-right "curr: [${curr_label}] next: [${next_label}]" >/dev/null
 }
 
 ducktape-refresh-theme() {
@@ -283,6 +319,7 @@ ducktape-taping() {
       fi
 
       rm -f "$_DUCKTAPE_LEGACY_TAPING_FILE"
+      ducktape-refresh-theme
       ;;
     unbind)
       local kept=()
@@ -311,10 +348,12 @@ ducktape-taping() {
       else
         print "✓ 바인드 없음: $PWD"
       fi
+      ducktape-refresh-theme
       ;;
     clear)
       rm -f "$_DUCKTAPE_BIND_FILE"
       print "✓ 전체 바인드 초기화"
+      ducktape-refresh-theme
       ;;
     --show|show)
       _ducktape_prune_bound_paths >/dev/null
