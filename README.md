@@ -70,6 +70,8 @@ ducktape-kill --bind-all  # Kill all sessions from the bound directory list
 ducktape-uninstall  # Remove everything
 ```
 
+All user-facing commands support `--help`, `-h`, or `help`.
+
 ### Switching Agents
 
 ```zsh

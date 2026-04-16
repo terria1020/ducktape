@@ -70,6 +70,8 @@ ducktape-kill --bind-all  # 바인드된 디렉토리 세션 전체 종료
 ducktape-uninstall  # 완전 제거
 ```
 
+사용자용 커맨드는 모두 `--help`, `-h`, `help`를 지원합니다.
+
 ### 에이전트 변경
 
 ```zsh

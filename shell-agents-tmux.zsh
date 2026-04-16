@@ -259,6 +259,17 @@ bindkey -M emacs $'\eOQ' _ducktape_f2_widget
 bindkey -M viins $'\eOQ' _ducktape_f2_widget
 
 ducktape-alias() {
+  case "${1:-}" in
+    -h|--help|help)
+      print "사용법:"
+      print "  ducktape-alias"
+      print ""
+      print "설명:"
+      print "  설치된 에이전트 목록에서 하나를 선택해 기본 에이전트를 변경합니다."
+      return 0
+      ;;
+  esac
+
   local candidates=()
   command -v claude  &>/dev/null && candidates+=(claude)
   command -v gemini  &>/dev/null && candidates+=(gemini)
@@ -293,6 +304,17 @@ ducktape-taping() {
   local action="${1:---show}"
 
   case "$action" in
+    -h|--help|help)
+      print "사용법:"
+      print "  ducktape-taping bind"
+      print "  ducktape-taping unbind"
+      print "  ducktape-taping clear"
+      print "  ducktape-taping --show"
+      print ""
+      print "설명:"
+      print "  현재 디렉토리를 F10 순환 목록에 추가/제거하거나 전체 목록을 확인합니다."
+      return 0
+      ;;
     bind)
       if ! _ducktape_bound_path_exists "$PWD"; then
         local paths=()
@@ -398,6 +420,23 @@ ducktape-taping() {
 ducktape-param() {
   local scope="${1:-show}"
 
+  case "$scope" in
+    -h|--help|help)
+      print "사용법:"
+      print "  ducktape-param show"
+      print "  ducktape-param global add <파라미터...>"
+      print "  ducktape-param global set <파라미터...>"
+      print "  ducktape-param global clear"
+      print "  ducktape-param local add <파라미터...>"
+      print "  ducktape-param local set <파라미터...>"
+      print "  ducktape-param local clear"
+      print ""
+      print "설명:"
+      print "  에이전트 실행 시 붙일 글로벌/로컬 파라미터를 관리합니다."
+      return 0
+      ;;
+  esac
+
   if [[ "$scope" == "show" ]]; then
     local gp lp merged
     gp=$(cat "$_DUCKTAPE_GLOBAL_PARAMS_DIR/.ducktape-params-${_DUCKTAPE_AGENT}" 2>/dev/null)
@@ -463,6 +502,17 @@ ducktape-param() {
 }
 
 ducktape-uninstall() {
+  case "${1:-}" in
+    -h|--help|help)
+      print "사용법:"
+      print "  ducktape-uninstall"
+      print ""
+      print "설명:"
+      print "  ducktape 스크립트, 설정 파일, tmux 바인딩을 제거합니다."
+      return 0
+      ;;
+  esac
+
   print "              _         _   _"
   print "    __     __| |_  _ __| |_| |_ __ _ _ __  ___"
   print " __( o)>  / _\` | || / _| / /  _/ _\` | '_ \/ -_)"
@@ -505,6 +555,17 @@ ducktape-uninstall() {
 }
 
 ducktape-status() {
+  case "${1:-}" in
+    -h|--help|help)
+      print "사용법:"
+      print "  ducktape-status"
+      print ""
+      print "설명:"
+      print "  현재 디렉토리의 세션 상태, 바인드 여부, 파라미터를 표시합니다."
+      return 0
+      ;;
+  esac
+
   local session=$(_ducktape_session_for_dir "$PWD")
   local gp lp
   gp=$(cat "$_DUCKTAPE_GLOBAL_PARAMS_DIR/.ducktape-params-${_DUCKTAPE_AGENT}" 2>/dev/null)
@@ -528,6 +589,15 @@ ducktape-kill() {
   local action="${1:-current}"
 
   case "$action" in
+    -h|--help|help)
+      print "사용법:"
+      print "  ducktape-kill"
+      print "  ducktape-kill --bind-all"
+      print ""
+      print "옵션:"
+      print "  (기본값)     현재 디렉토리의 세션 종료"
+      print "  --bind-all   바인드된 디렉토리 세션 전체 종료"
+      ;;
     --bind-all|bind-all)
       _ducktape_prune_bound_paths >/dev/null
 
@@ -569,12 +639,24 @@ ducktape-kill() {
       print "사용법:"
       print "  ducktape-kill"
       print "  ducktape-kill --bind-all"
+      print "  ducktape-kill --help"
       return 1
       ;;
   esac
 }
 
 ducktape-ls() {
+  case "${1:-}" in
+    -h|--help|help)
+      print "사용법:"
+      print "  ducktape-ls"
+      print ""
+      print "설명:"
+      print "  현재 떠 있는 모든 ducktape tmux 세션을 표시합니다."
+      return 0
+      ;;
+  esac
+
   print "── ducktape sessions ──"
   tmux ls 2>/dev/null | grep "^ducktape-" || print "(없음)"
 }
