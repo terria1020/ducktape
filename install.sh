@@ -16,6 +16,16 @@ success() { echo -e "${GREEN}✓${NC} $*"; }
 warn()    { echo -e "${YELLOW}!${NC} $*"; }
 error()   { echo -e "${RED}✗${NC} $*" >&2; exit 1; }
 
+strip_ducktape_tmux_block() {
+  local file="$1"
+  [[ -f "$file" ]] || return 0
+
+  perl -0pi -e 's/\n?# ducktape\n.*?\n# \/ducktape\n/\n/s' "$file"
+  sed -i '' '/bind-key -n F2 /d' "$file"
+  sed -i '' '/bind-key -n F10 run-shell/d' "$file"
+  sed -i '' '/bind-key a display-popup/d' "$file"
+}
+
 echo ""
 echo -e "${BOLD}              _         _   _${NC}"
 echo -e "${BOLD}    __     __| |_  _ __| |_| |_ __ _ _ __  ___${NC}"
@@ -92,10 +102,10 @@ fi
 
 # ── tmux.conf 설정 ────────────────────────
 
-if grep -q "ducktape" "$TMUX_CONF" 2>/dev/null; then
-  warn "tmux.conf 이미 설정됨 (건너뜀)"
-else
-  cat >> "$TMUX_CONF" << 'EOF'
+touch "$TMUX_CONF"
+strip_ducktape_tmux_block "$TMUX_CONF"
+
+cat >> "$TMUX_CONF" << 'EOF'
 
 # ducktape
 set -g mouse on
@@ -110,8 +120,8 @@ bind -T copy-mode MouseDown1Pane send-keys -X clear-selection
 bind -T copy-mode-vi MouseDown1Pane send-keys -X clear-selection
 # /ducktape
 EOF
-  success "tmux.conf 업데이트"
-fi
+
+success "tmux.conf 업데이트"
 
 tmux source-file "$TMUX_CONF" 2>/dev/null && success "tmux 설정 적용" || true
 
@@ -130,7 +140,7 @@ echo "  ducktape-taping    → bind/unbind/clear/show"
 echo "  ducktape-param     → 실행 파라미터 관리 (글로벌/로컬)"
 echo "  ducktape-status    → 현재 세션 상태"
 echo "  ducktape-ls        → 전체 세션 목록"
-echo "  ducktape-kill      → 현재 디렉토리 세션 종료"
+echo "  ducktape-kill      → 현재 디렉토리 세션 종료 / --bind-all"
 echo "  ducktape-uninstall → 완전 제거"
 echo ""
 echo -e "적용: ${BOLD}source ~/.zshrc${NC} (또는 새 터미널)"
