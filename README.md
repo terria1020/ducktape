@@ -99,6 +99,17 @@ Behavior:
 
 If a bound directory's agent session is not running, F10 starts it on demand.
 
+### Session Bar
+
+Each ducktape session gets a tmux status bar theme derived from the full directory path hash.
+The right side of the bar also shows the current and next bound directories:
+
+```text
+curr: [my-project] next: [another-project]
+```
+
+If there is no next bound directory, it is shown as `next: []`.
+
 ### Run Parameters
 
 Pass flags to the agent automatically on every launch.  
@@ -132,7 +143,7 @@ ducktape-param local clear
 
 The local `.ducktape-params` file can be committed to a project repo or added to `.gitignore` — your choice.
 
-> **Note for existing installs:** the F10 binding in `~/.tmux.conf` was written at install time and does not auto-update. Re-run the installer to get the circular binding handler.
+> **Note for existing installs:** `install.sh` now replaces the ducktape block in `~/.tmux.conf` with the latest version. Re-run the installer to refresh F10 and related tmux settings.
 
 ## Uninstall
 
