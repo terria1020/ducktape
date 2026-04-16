@@ -10,7 +10,7 @@
 
 tmux-based AI agent session manager.
 Toggle attach/detach with a single key (F2), with automatic per-directory session management.
-Optional `taping` mode turns F2 into an agent/tap/shell cycle for the current directory.
+Optional `taping` bindings let F10 cycle through a saved list of per-directory agent sessions.
 
 ## Install
 
@@ -32,10 +32,8 @@ Optional `taping` mode turns F2 into an agent/tap/shell cycle for the current di
 | Key | Context | Action |
 |-----|---------|--------|
 | `F2` | Shell prompt | Attach to agent session for current directory (creates one if none exists) |
-| `F2` | Shell prompt + taping enabled | Attach to agent session for current directory |
-| `F2` | Inside agent | Switch to tap session for current directory |
-| `F2` | Inside tap session | Detach → return to shell |
-| `F12` | Inside agent | Restart agent (fresh context, no resume) |
+| `F2` | Inside agent | Detach → return to shell |
+| `F10` | Inside agent | Cycle to the next bound directory session |
 | `Ctrl-B a` | Anywhere in tmux | fzf picker for all ducktape sessions |
 
 ### Per-directory Sessions
@@ -49,28 +47,30 @@ Each directory gets its own independent session.
 ~/project-a $ F2   →  ducktape-claude-a1b2c3d4 (re-attach existing)
 ```
 
-With taping enabled:
+With session bindings:
 
 ```
-~/project-a $ ducktape-taping --enable
+~/project-a $ ducktape-taping bind
+~/project-b $ ducktape-taping bind
 ~/project-a $ F2   →  ducktape-claude-a1b2c3d4
-~/project-a $ F2   →  ducktape-tap-a1b2c3d4 (new or existing)
-~/project-a $ F2   →  detach
-~/project-a $ ducktape-taping --disable
-~/project-a $ F2   →  ducktape-claude-a1b2c3d4
+~/project-a $ F10  →  ducktape-claude-e5f6g7h8
+~/project-b $ F10  →  ducktape-claude-a1b2c3d4
 ```
 
 ### Commands
 
 ```zsh
 ducktape-alias      # Switch agent interactively
-ducktape-taping     # Enable/disable plain terminal session mode
+ducktape-taping     # Manage bound directories for F10 cycling
 ducktape-param      # Manage run parameters (global / local)
 ducktape-status     # Show session status for current directory
 ducktape-ls         # List all ducktape sessions
 ducktape-kill       # Kill session for current directory
+ducktape-kill --bind-all  # Kill all sessions from the bound directory list
 ducktape-uninstall  # Remove everything
 ```
+
+All user-facing commands support `--help`, `-h`, or `help`.
 
 ### Switching Agents
 
@@ -80,18 +80,37 @@ ducktape-alias
 # → Takes effect in new terminals
 ```
 
-### Taping Mode
+### Taping Bindings
 
-`taping` mode keeps the current directory on a plain tmux shell session instead of an agent session.
-`taping` mode enables an agent → tap → shell cycle for the current directory.
+`ducktape-taping` manages a circular list of bound directories.
+F10 moves between the bound directories in saved order.
+Entries are deduplicated by path, and missing directories are pruned automatically.
 
 ```zsh
-ducktape-taping --enable
+ducktape-taping bind
+ducktape-taping unbind
+ducktape-taping clear
 ducktape-taping --show
-ducktape-taping --disable
 ```
 
-When enabled, `F2` first opens the agent session, then switches to the tap session, then detaches back to shell.
+Behavior:
+- `bind`: add the current directory once, preserving the original order if already bound
+- `unbind`: remove the current directory from the list
+- `clear`: remove the entire bind list
+- `--show`: print the saved order and mark the current directory
+
+If a bound directory's agent session is not running, F10 starts it on demand.
+
+### Session Bar
+
+Each ducktape session gets a tmux status bar theme derived from the full directory path hash.
+The right side of the bar also shows the current and next bound directories:
+
+```text
+curr: [my-project] next: [another-project]
+```
+
+If there is no next bound directory, it is shown as `next: []`.
 
 ### Run Parameters
 
@@ -126,7 +145,7 @@ ducktape-param local clear
 
 The local `.ducktape-params` file can be committed to a project repo or added to `.gitignore` — your choice.
 
-> **Note for existing installs:** the F12 restart binding in `~/.tmux.conf` was written at install time and does not auto-update. Re-run the installer to get the updated binding that reads params on restart.
+> **Note for existing installs:** `install.sh` now replaces the ducktape block in `~/.tmux.conf` with the latest version. Re-run the installer to refresh F10 and related tmux settings.
 
 ## Uninstall
 
@@ -147,9 +166,10 @@ rm ~/.zsh/shell-agents-tmux.zsh ~/.zsh/.ducktape-agent
 ```
 ~/.zsh/shell-agents-tmux.zsh   # Main script
 ~/.zsh/.ducktape-agent         # Selected agent name
+~/.zsh/.ducktape-bindings      # Bound directory list for F10 cycling (optional)
 ~/.zsh/.ducktape-params        # Global run parameters (optional)
 $PWD/.ducktape-params          # Local run parameters per project (optional)
-~/.tmux.conf                   # F2 / F12 / Ctrl-B a bindings
+~/.tmux.conf                   # F2 / F10 / Ctrl-B a bindings
 ```
 
 ## Scroll Behavior

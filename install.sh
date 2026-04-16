@@ -16,6 +16,16 @@ success() { echo -e "${GREEN}✓${NC} $*"; }
 warn()    { echo -e "${YELLOW}!${NC} $*"; }
 error()   { echo -e "${RED}✗${NC} $*" >&2; exit 1; }
 
+strip_ducktape_tmux_block() {
+  local file="$1"
+  [[ -f "$file" ]] || return 0
+
+  perl -0pi -e 's/\n?# ducktape\n.*?\n# \/ducktape\n/\n/s' "$file"
+  sed -i '' '/bind-key -n F2 /d' "$file"
+  sed -i '' '/bind-key -n F10 run-shell/d' "$file"
+  sed -i '' '/bind-key a display-popup/d' "$file"
+}
+
 echo ""
 echo -e "${BOLD}              _         _   _${NC}"
 echo -e "${BOLD}    __     __| |_  _ __| |_| |_ __ _ _ __  ___${NC}"
@@ -92,29 +102,16 @@ fi
 
 # ── tmux.conf 설정 ────────────────────────
 
-if grep -q "ducktape" "$TMUX_CONF" 2>/dev/null; then
-  warn "tmux.conf 이미 설정됨 (건너뜀)"
-else
-  cat >> "$TMUX_CONF" << 'EOF'
+touch "$TMUX_CONF"
+strip_ducktape_tmux_block "$TMUX_CONF"
+
+cat >> "$TMUX_CONF" << 'EOF'
 
 # ducktape
 set -g mouse on
 set -g history-limit 100000
 bind-key -n F2 run-shell 'zsh -lc "source \"$HOME/.zsh/shell-agents-tmux.zsh\"; ducktape-tmux-f2"'
-bind-key -n F12 run-shell '\
-  AGENT=$(cat "$HOME/.zsh/.ducktape-agent" 2>/dev/null || echo claude); \
-  GPARAMS=$(cat "$HOME/.zsh/.ducktape-params" 2>/dev/null); \
-  S=$(tmux display-message -p "#{session_name}"); \
-  D=$(tmux display-message -p "#{pane_current_path}"); \
-  LPARAMS=$(cat "$D/.ducktape-params" 2>/dev/null); \
-  CMD="$AGENT"; \
-  [ -n "$GPARAMS" ] && CMD="$CMD $GPARAMS"; \
-  [ -n "$LPARAMS" ] && CMD="$CMD $LPARAMS"; \
-  TMP="tmp_restart_$$"; \
-  tmux new-session -d -s "$TMP" -c "$D" sh -c "$CMD"; \
-  tmux switch-client -t "$TMP"; \
-  tmux kill-session -t "$S"; \
-  tmux rename-session -t "$TMP" "$S"'
+bind-key -n F10 run-shell 'zsh -lc "source \"$HOME/.zsh/shell-agents-tmux.zsh\"; ducktape-tmux-f12"'
 bind-key a display-popup -E \
   "tmux ls 2>/dev/null | grep ducktape | cut -d: -f1 | fzf --prompt='agent> ' --height=10 | xargs -I{} tmux switch-client -t {}"
 bind -T copy-mode MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy"
@@ -123,8 +120,8 @@ bind -T copy-mode MouseDown1Pane send-keys -X clear-selection
 bind -T copy-mode-vi MouseDown1Pane send-keys -X clear-selection
 # /ducktape
 EOF
-  success "tmux.conf 업데이트"
-fi
+
+success "tmux.conf 업데이트"
 
 tmux source-file "$TMUX_CONF" 2>/dev/null && success "tmux 설정 적용" || true
 
@@ -135,16 +132,17 @@ echo -e "${GREEN}─────────────────────
 echo -e "${BOLD}설치 완료!${NC} 에이전트: ${BOLD}$SELECTED${NC}"
 echo ""
 echo "  F2            → $SELECTED attach/detach 토글"
-echo "  F12           → $SELECTED 재시작 (컨텍스트 초기화)"
+echo "  F10           → bind된 디렉토리 세션 순환"
 echo "  Ctrl-B a      → 세션 목록 fzf 피커"
 echo ""
 echo "  ducktape-alias     → 에이전트 변경"
-echo "  ducktape-taping    → 순정 tmux 쉘 세션 모드 on/off"
+echo "  ducktape-taping    → bind/unbind/clear/show"
 echo "  ducktape-param     → 실행 파라미터 관리 (글로벌/로컬)"
 echo "  ducktape-status    → 현재 세션 상태"
 echo "  ducktape-ls        → 전체 세션 목록"
-echo "  ducktape-kill      → 현재 디렉토리 세션 종료"
+echo "  ducktape-kill      → 현재 디렉토리 세션 종료 / --bind-all / --help"
 echo "  ducktape-uninstall → 완전 제거"
+echo "  각 커맨드 --help   → 사용법 확인"
 echo ""
 echo -e "적용: ${BOLD}source ~/.zshrc${NC} (또는 새 터미널)"
 echo ""
