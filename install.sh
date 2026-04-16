@@ -4,7 +4,6 @@
 
 set -euo pipefail
 
-REPO_RAW="https://raw.githubusercontent.com/terria1020/ducktape/main"
 ZSH_DIR="$HOME/.zsh"
 ZSH_SCRIPT="$ZSH_DIR/shell-agents-tmux.zsh"
 AGENT_CONF="$ZSH_DIR/.ducktape-agent"
@@ -74,7 +73,7 @@ info "선택: $SELECTED"
 mkdir -p "$ZSH_DIR"
 
 info "shell-agents-tmux.zsh 다운로드 중..."
-curl -fsSL "$REPO_RAW/shell-agents-tmux.zsh" -o "$ZSH_SCRIPT"
+curl -fsSL "https://raw.githubusercontent.com/terria1020/ducktape/main/shell-agents-tmux.zsh" -o "$ZSH_SCRIPT"
 success "스크립트 설치: $ZSH_SCRIPT"
 
 echo "$SELECTED" > "$AGENT_CONF"
@@ -140,6 +139,7 @@ echo "  F12           → $SELECTED 재시작 (컨텍스트 초기화)"
 echo "  Ctrl-B a      → 세션 목록 fzf 피커"
 echo ""
 echo "  ducktape-alias     → 에이전트 변경"
+echo "  ducktape-taping    → 순정 tmux 쉘 세션 모드 on/off"
 echo "  ducktape-param     → 실행 파라미터 관리 (글로벌/로컬)"
 echo "  ducktape-status    → 현재 세션 상태"
 echo "  ducktape-ls        → 전체 세션 목록"

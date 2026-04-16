@@ -1,7 +1,7 @@
 #######################
 # ~/.zsh/shell-agents-tmux.zsh
 # ducktape — F2 토글 (디렉토리별 세션)
-# F2: 쉘 → attach/신규, 에이전트 안 → detach (tmux.conf 담당)
+# F2: 쉘 → attach/신규, tmux 안 → detach (tmux.conf 담당)
 
 setopt PROMPT_SUBST
 
@@ -18,6 +18,7 @@ fi
 _DUCKTAPE_CONF="$HOME/.zsh/.ducktape-agent"
 _DUCKTAPE_AGENT=$(cat "$_DUCKTAPE_CONF" 2>/dev/null || echo "claude")
 _DUCKTAPE_GLOBAL_PARAMS_DIR="$HOME/.zsh"
+_DUCKTAPE_TAPING_FILE="$PWD/.ducktape-taping"
 
 # 표기명 → 실제 실행 커맨드 매핑 (글로벌 + 로컬 파라미터 포함)
 _ducktape_cmd() {
@@ -46,16 +47,39 @@ _ducktape_session() {
   print "ducktape-${_DUCKTAPE_AGENT}-${hash:0:8}"
 }
 
+_ducktape_tap_session() {
+  local hash=$(print -n "$PWD" | shasum | awk '{print $1}')
+  print "ducktape-tap-${hash:0:8}"
+}
+
+_ducktape_taping_enabled() {
+  [[ -f "$_DUCKTAPE_TAPING_FILE" ]] && grep -q '^enabled$' "$_DUCKTAPE_TAPING_FILE" 2>/dev/null
+}
+
+_ducktape_attach_or_create() {
+  local session="$1"
+  local mode="$2"
+
+  if tmux has-session -t "$session" 2>/dev/null; then
+    BUFFER="tmux attach-session -t '$session'"
+  else
+    if [[ "$mode" == "tap" ]]; then
+      BUFFER="tmux new-session -d -s '$session' -c '$PWD' && tmux attach-session -t '$session'"
+    else
+      BUFFER="tmux new-session -d -s '$session' -c '$PWD' $(_ducktape_cmd) && tmux attach-session -t '$session'"
+    fi
+  fi
+}
+
 # ─────────────────────────────────────────
 # F2 ZLE 위젯
 # ─────────────────────────────────────────
 
 _ducktape_f2_widget() {
-  local session=$(_ducktape_session)
-  if tmux has-session -t "$session" 2>/dev/null; then
-    BUFFER="tmux attach-session -t $session"
+  if _ducktape_taping_enabled; then
+    _ducktape_attach_or_create "$(_ducktape_tap_session)" "tap"
   else
-    BUFFER="tmux new-session -d -s '$session' -c '$PWD' $(_ducktape_cmd) && tmux attach-session -t '$session'"
+    _ducktape_attach_or_create "$(_ducktape_session)" "agent"
   fi
   zle accept-line
 }
@@ -105,6 +129,43 @@ ducktape-alias() {
 }
 
 # ─────────────────────────────────────────
+# ducktape-taping — 순정 터미널 세션 관리
+# ─────────────────────────────────────────
+
+ducktape-taping() {
+  local action="${1:-show}"
+  local file="$_DUCKTAPE_TAPING_FILE"
+
+  case "$action" in
+    enable)
+      print "enabled" > "$file"
+      print "✓ taping 활성화"
+      print "  F2 → 순정 터미널 세션으로 attach"
+      ;;
+    disable)
+      rm -f "$file"
+      print "✓ taping 비활성화"
+      print "  F2 → ducktape-alias 기반 에이전트 세션으로 attach"
+      ;;
+    show)
+      if _ducktape_taping_enabled; then
+        print "taping: enabled"
+        print "session: $(_ducktape_tap_session)"
+      else
+        print "taping: disabled"
+      fi
+      ;;
+    *)
+      print "사용법:"
+      print "  ducktape-taping --enable"
+      print "  ducktape-taping --disable"
+      print "  ducktape-taping --show"
+      return 1
+      ;;
+  esac
+}
+
+# ─────────────────────────────────────────
 # ducktape-param — 실행 파라미터 관리
 # ─────────────────────────────────────────
 
@@ -113,7 +174,7 @@ ducktape-param() {
 
   if [[ "$scope" == "show" ]]; then
     local gp lp merged
-    gp=$(cat "$_DUCKTAPE_GLOBAL_PARAMS_FILE" 2>/dev/null)
+    gp=$(cat "$_DUCKTAPE_GLOBAL_PARAMS_DIR/.ducktape-params-${_DUCKTAPE_AGENT}" 2>/dev/null)
     lp=$(cat "$PWD/.ducktape-params" 2>/dev/null)
     local merged="$gp"
     [[ -n "$gp" && -n "$lp" ]] && merged="$gp $lp"
@@ -200,6 +261,7 @@ ducktape-uninstall() {
   rm -f "$HOME/.zsh/shell-agents-tmux.zsh"
   rm -f "$_DUCKTAPE_CONF"
   rm -f "$_DUCKTAPE_GLOBAL_PARAMS_DIR"/.ducktape-params-*
+  rm -f "$_DUCKTAPE_TAPING_FILE"
   print "✓ 스크립트 제거"
 
   # 3. .zshrc에서 ducktape 라인 제거
@@ -234,13 +296,20 @@ ducktape-uninstall() {
 # ─────────────────────────────────────────
 
 ducktape-status() {
-  local session=$(_ducktape_session)
+  local session
   local gp lp
   gp=$(cat "$_DUCKTAPE_GLOBAL_PARAMS_DIR/.ducktape-params-${_DUCKTAPE_AGENT}" 2>/dev/null)
   lp=$(cat "$PWD/.ducktape-params" 2>/dev/null)
   print "에이전트: $_DUCKTAPE_AGENT"
   print "  global params: ${gp:-(없음)}"
   print "  local  params: ${lp:-(없음)}"
+  if _ducktape_taping_enabled; then
+    session=$(_ducktape_tap_session)
+    print "  taping: enabled"
+  else
+    session=$(_ducktape_session)
+    print "  taping: disabled"
+  fi
   if tmux has-session -t "$session" 2>/dev/null; then
     print "● 세션 실행 중 ($session)"
   else
@@ -249,7 +318,12 @@ ducktape-status() {
 }
 
 ducktape-kill() {
-  local session=$(_ducktape_session)
+  local session
+  if _ducktape_taping_enabled; then
+    session=$(_ducktape_tap_session)
+  else
+    session=$(_ducktape_session)
+  fi
   if tmux has-session -t "$session" 2>/dev/null; then
     tmux kill-session -t "$session"
     print "✓ 세션 종료 ($session)"
@@ -268,9 +342,16 @@ ducktape-ls() {
 # ─────────────────────────────────────────
 
 precmd_ducktape_indicator() {
-  local session=$(_ducktape_session)
+  local session label
+  if _ducktape_taping_enabled; then
+    session=$(_ducktape_tap_session)
+    label="tap"
+  else
+    session=$(_ducktape_session)
+    label="$_DUCKTAPE_AGENT"
+  fi
   if tmux has-session -t "$session" 2>/dev/null; then
-    DUCKTAPE_INDICATOR="%F{magenta}●${_DUCKTAPE_AGENT}%f"
+    DUCKTAPE_INDICATOR="%F{magenta}●${label}%f"
   else
     DUCKTAPE_INDICATOR=""
   fi
