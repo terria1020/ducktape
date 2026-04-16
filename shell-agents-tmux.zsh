@@ -17,7 +17,7 @@ fi
 
 _DUCKTAPE_CONF="$HOME/.zsh/.ducktape-agent"
 _DUCKTAPE_AGENT=$(cat "$_DUCKTAPE_CONF" 2>/dev/null || echo "claude")
-_DUCKTAPE_GLOBAL_PARAMS_FILE="$HOME/.zsh/.ducktape-params"
+_DUCKTAPE_GLOBAL_PARAMS_DIR="$HOME/.zsh"
 
 # 표기명 → 실제 실행 커맨드 매핑 (글로벌 + 로컬 파라미터 포함)
 _ducktape_cmd() {
@@ -28,7 +28,7 @@ _ducktape_cmd() {
   esac
 
   local gp lp
-  gp=$(cat "$_DUCKTAPE_GLOBAL_PARAMS_FILE" 2>/dev/null)
+  gp=$(cat "$_DUCKTAPE_GLOBAL_PARAMS_DIR/.ducktape-params-${_DUCKTAPE_AGENT}" 2>/dev/null)
   lp=$(cat "$PWD/.ducktape-params" 2>/dev/null)
 
   local cmd="$agent"
@@ -126,7 +126,7 @@ ducktape-param() {
 
   local file
   case "$scope" in
-    global) file="$_DUCKTAPE_GLOBAL_PARAMS_FILE" ;;
+    global) file="$_DUCKTAPE_GLOBAL_PARAMS_DIR/.ducktape-params-${_DUCKTAPE_AGENT}" ;;
     local)  file="$PWD/.ducktape-params" ;;
     *)
       print "사용법:"
@@ -199,7 +199,7 @@ ducktape-uninstall() {
   # 2. 스크립트 파일 제거
   rm -f "$HOME/.zsh/shell-agents-tmux.zsh"
   rm -f "$_DUCKTAPE_CONF"
-  rm -f "$_DUCKTAPE_GLOBAL_PARAMS_FILE"
+  rm -f "$_DUCKTAPE_GLOBAL_PARAMS_DIR"/.ducktape-params-*
   print "✓ 스크립트 제거"
 
   # 3. .zshrc에서 ducktape 라인 제거
@@ -236,7 +236,7 @@ ducktape-uninstall() {
 ducktape-status() {
   local session=$(_ducktape_session)
   local gp lp
-  gp=$(cat "$_DUCKTAPE_GLOBAL_PARAMS_FILE" 2>/dev/null)
+  gp=$(cat "$_DUCKTAPE_GLOBAL_PARAMS_DIR/.ducktape-params-${_DUCKTAPE_AGENT}" 2>/dev/null)
   lp=$(cat "$PWD/.ducktape-params" 2>/dev/null)
   print "에이전트: $_DUCKTAPE_AGENT"
   print "  global params: ${gp:-(없음)}"
