@@ -7,6 +7,7 @@ set -euo pipefail
 ZSH_DIR="$HOME/.zsh"
 ZSH_SCRIPT="$ZSH_DIR/shell-agents-tmux.zsh"
 AGENT_CONF="$ZSH_DIR/.ducktape-agent"
+BIND_FILE="$ZSH_DIR/.ducktape-bindings"
 TAPING_FILE="$PWD/.ducktape-taping"
 TMUX_CONF="$HOME/.tmux.conf"
 ZSHRC="$HOME/.zshrc"
@@ -50,6 +51,7 @@ fi
 
 rm -f "$ZSH_SCRIPT"
 rm -f "$AGENT_CONF"
+rm -f "$BIND_FILE"
 rm -f "$ZSH_DIR"/.ducktape-params-*
 rm -f "$TAPING_FILE"
 success "설정 파일 제거"
