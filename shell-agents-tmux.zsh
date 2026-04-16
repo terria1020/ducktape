@@ -96,15 +96,61 @@ _ducktape_prune_bound_paths() {
   return $changed
 }
 
+_ducktape_apply_theme() {
+  local session="$1"
+  local dir="$2"
+
+  tmux has-session -t "$session" 2>/dev/null || return 1
+
+  local hash=$(_ducktape_dir_hash "$dir")
+  local seed=$(( 16#${hash[1,2]} ))
+
+  local -a dark_palette=(
+    colour17 colour18 colour19 colour20
+    colour22 colour23 colour24 colour25
+    colour52 colour53 colour54 colour55
+  )
+  local -a accent_palette=(
+    colour39 colour45 colour50 colour81
+    colour118 colour154 colour178 colour208
+    colour214 colour141 colour177 colour203
+  )
+
+  local idx=$(( seed % ${#dark_palette[@]} + 1 ))
+  local status_bg="${dark_palette[idx]}"
+  local accent_bg="${accent_palette[idx]}"
+
+  tmux set-option -t "$session" status-style "bg=${status_bg},fg=white" >/dev/null
+  tmux set-option -t "$session" window-status-style "bg=${status_bg},fg=colour250" >/dev/null
+  tmux set-option -t "$session" window-status-current-style "bg=${accent_bg},fg=black,bold" >/dev/null
+  tmux set-option -t "$session" window-status-activity-style "bg=${status_bg},fg=${accent_bg},bold" >/dev/null
+}
+
+ducktape-refresh-theme() {
+  local sessions
+  sessions=$(tmux ls 2>/dev/null | grep "^ducktape-" | awk -F: '{print $1}')
+  [[ -n "$sessions" ]] || return 0
+
+  local session dir
+  while IFS= read -r session; do
+    [[ -n "$session" ]] || continue
+    dir=$(tmux list-panes -t "$session" -F '#{pane_current_path}' 2>/dev/null | head -n 1)
+    [[ -n "$dir" ]] || continue
+    _ducktape_apply_theme "$session" "$dir"
+  done <<< "$sessions"
+}
+
 _ducktape_attach_or_create_agent() {
   local dir="${1:-$PWD}"
   local session=$(_ducktape_session_for_dir "$dir")
 
   if tmux has-session -t "$session" 2>/dev/null; then
-    BUFFER="tmux attach-session -t '$session'"
+    _ducktape_apply_theme "$session" "$dir"
   else
-    BUFFER="tmux new-session -d -s '$session' -c '$dir' $(_ducktape_cmd_for_dir "$dir") && tmux attach-session -t '$session'"
+    tmux new-session -d -s "$session" -c "$dir" $(_ducktape_cmd_for_dir "$dir") || return 1
+    _ducktape_apply_theme "$session" "$dir"
   fi
+  BUFFER="tmux attach-session -t '$session'"
 }
 
 _ducktape_switch_or_create_agent() {
@@ -112,11 +158,12 @@ _ducktape_switch_or_create_agent() {
   local session=$(_ducktape_session_for_dir "$dir")
 
   if tmux has-session -t "$session" 2>/dev/null; then
-    tmux switch-client -t "$session"
+    _ducktape_apply_theme "$session" "$dir"
   else
-    tmux new-session -d -s "$session" -c "$dir" $(_ducktape_cmd_for_dir "$dir")
-    tmux switch-client -t "$session"
+    tmux new-session -d -s "$session" -c "$dir" $(_ducktape_cmd_for_dir "$dir") || return 1
+    _ducktape_apply_theme "$session" "$dir"
   fi
+  tmux switch-client -t "$session"
 }
 
 ducktape-tmux-f2() {
