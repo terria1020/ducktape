@@ -10,7 +10,7 @@
 
 tmux 기반 AI 에이전트 세션 매니저.
 F2 하나로 attach/detach 토글, 디렉토리별 세션 자동 관리.
-옵션 `taping` 모드는 F2를 현재 디렉토리의 순정 tmux 쉘 세션으로 전환합니다.
+옵션 `taping` 모드는 F2를 현재 디렉토리의 agent/tap/shell 순환으로 전환합니다.
 
 ## 설치
 
@@ -32,9 +32,9 @@ F2 하나로 attach/detach 토글, 디렉토리별 세션 자동 관리.
 | 키 | 상황 | 동작 |
 |----|------|------|
 | `F2` | 쉘 프롬프트 | 현재 디렉토리 에이전트 세션 attach (없으면 신규 생성) |
-| `F2` | 쉘 프롬프트 + taping 활성화 | 현재 디렉토리의 순정 tmux 쉘 세션 attach |
-| `F2` | 에이전트 안 | detach → 쉘 복귀 |
-| `F2` | taping 세션 안 | detach → 쉘 복귀 |
+| `F2` | 쉘 프롬프트 + taping 활성화 | 현재 디렉토리 에이전트 세션 attach |
+| `F2` | 에이전트 안 | tap 세션으로 전환 |
+| `F2` | tap 세션 안 | detach → 쉘 복귀 |
 | `F12` | 에이전트 안 | 에이전트 재시작 (컨텍스트 초기화, resume 없음) |
 | `Ctrl-B a` | tmux 안 어디서든 | 전체 ducktape 세션 fzf 피커 |
 
@@ -53,6 +53,7 @@ taping 활성화 시:
 
 ```
 ~/project-a $ ducktape-taping --enable
+~/project-a $ F2   →  ducktape-claude-a1b2c3d4
 ~/project-a $ F2   →  ducktape-tap-a1b2c3d4 (신규 또는 기존)
 ~/project-a $ F2   →  detach
 ~/project-a $ ducktape-taping --disable
@@ -81,7 +82,7 @@ ducktape-alias
 
 ### Taping 모드
 
-`taping` 모드는 현재 디렉토리를 에이전트 세션 대신 순정 tmux 쉘 세션으로 유지합니다.
+`taping` 모드는 현재 디렉토리의 agent/tap/shell 전환을 활성화합니다.
 
 ```zsh
 ducktape-taping --enable
@@ -89,7 +90,7 @@ ducktape-taping --show
 ducktape-taping --disable
 ```
 
-활성화되면 `F2`는 해당 디렉토리의 tap 세션으로 들어가고, 비활성화되면 기존 에이전트 흐름으로 돌아갑니다.
+활성화되면 `F2`는 에이전트 세션을 열고, 다시 누르면 tap 세션으로 전환되며, tap 세션에서 한 번 더 누르면 쉘로 복귀합니다.
 
 ### 실행 파라미터 관리
 

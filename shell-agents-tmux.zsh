@@ -56,6 +56,10 @@ _ducktape_taping_enabled() {
   [[ -f "$_DUCKTAPE_TAPING_FILE" ]] && grep -q '^enabled$' "$_DUCKTAPE_TAPING_FILE" 2>/dev/null
 }
 
+_ducktape_taping_enabled_for_pwd() {
+  [[ -f "$PWD/.ducktape-taping" ]] && grep -q '^enabled$' "$PWD/.ducktape-taping" 2>/dev/null
+}
+
 _ducktape_attach_or_create() {
   local session="$1"
   local mode="$2"
@@ -69,6 +73,35 @@ _ducktape_attach_or_create() {
       BUFFER="tmux new-session -d -s '$session' -c '$PWD' $(_ducktape_cmd) && tmux attach-session -t '$session'"
     fi
   fi
+}
+
+ducktape-tmux-f2() {
+  local current_session
+  current_session=$(tmux display-message -p "#{session_name}" 2>/dev/null || print "")
+
+  if ! _ducktape_taping_enabled_for_pwd; then
+    tmux detach-client
+    return 0
+  fi
+
+  local agent_session=$(_ducktape_session)
+  local tap_session=$(_ducktape_tap_session)
+
+  if [[ "$current_session" == "$agent_session" ]]; then
+    if tmux has-session -t "$tap_session" 2>/dev/null; then
+      tmux switch-client -t "$tap_session"
+    else
+      tmux new-session -d -s "$tap_session" -c "$PWD" && tmux switch-client -t "$tap_session"
+    fi
+    return 0
+  fi
+
+  if [[ "$current_session" == "$tap_session" ]]; then
+    tmux detach-client
+    return 0
+  fi
+
+  tmux detach-client
 }
 
 # ─────────────────────────────────────────
@@ -133,21 +166,21 @@ ducktape-alias() {
 # ─────────────────────────────────────────
 
 ducktape-taping() {
-  local action="${1:-show}"
+  local action="${1:---show}"
   local file="$_DUCKTAPE_TAPING_FILE"
 
   case "$action" in
-    enable)
+    --enable)
       print "enabled" > "$file"
       print "✓ taping 활성화"
-      print "  F2 → 순정 터미널 세션으로 attach"
+      print "  F2 → agent 세션 ↔ tap 세션 ↔ shell"
       ;;
-    disable)
+    --disable)
       rm -f "$file"
       print "✓ taping 비활성화"
-      print "  F2 → ducktape-alias 기반 에이전트 세션으로 attach"
+      print "  F2 → agent 세션만 토글"
       ;;
-    show)
+    --show)
       if _ducktape_taping_enabled; then
         print "taping: enabled"
         print "session: $(_ducktape_tap_session)"
@@ -276,7 +309,7 @@ ducktape-uninstall() {
     # ducktape 마커 사이 블록 삭제
     sed -i '' '/^# ducktape$/,/^# \/ducktape$/d' "$HOME/.tmux.conf"
     # 개별 바인딩 라인 제거 (마커 없이 추가된 경우)
-    sed -i '' '/bind-key -n F2 detach-client/d' "$HOME/.tmux.conf"
+    sed -i '' '/bind-key -n F2 /d' "$HOME/.tmux.conf"
     sed -i '' '/bind-key -n F12 run-shell/d' "$HOME/.tmux.conf"
     sed -i '' '/tmp_restart/d' "$HOME/.tmux.conf"
     sed -i '' '/pane_current_path/d' "$HOME/.tmux.conf"

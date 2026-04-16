@@ -10,7 +10,7 @@
 
 tmux-based AI agent session manager.
 Toggle attach/detach with a single key (F2), with automatic per-directory session management.
-Optional `taping` mode turns F2 into a plain tmux shell session for the current directory.
+Optional `taping` mode turns F2 into an agent/tap/shell cycle for the current directory.
 
 ## Install
 
@@ -32,9 +32,9 @@ Optional `taping` mode turns F2 into a plain tmux shell session for the current 
 | Key | Context | Action |
 |-----|---------|--------|
 | `F2` | Shell prompt | Attach to agent session for current directory (creates one if none exists) |
-| `F2` | Shell prompt + taping enabled | Attach to plain tmux shell session for current directory |
-| `F2` | Inside agent | Detach → return to shell |
-| `F2` | Inside taping session | Detach → return to shell |
+| `F2` | Shell prompt + taping enabled | Attach to agent session for current directory |
+| `F2` | Inside agent | Switch to tap session for current directory |
+| `F2` | Inside tap session | Detach → return to shell |
 | `F12` | Inside agent | Restart agent (fresh context, no resume) |
 | `Ctrl-B a` | Anywhere in tmux | fzf picker for all ducktape sessions |
 
@@ -53,6 +53,7 @@ With taping enabled:
 
 ```
 ~/project-a $ ducktape-taping --enable
+~/project-a $ F2   →  ducktape-claude-a1b2c3d4
 ~/project-a $ F2   →  ducktape-tap-a1b2c3d4 (new or existing)
 ~/project-a $ F2   →  detach
 ~/project-a $ ducktape-taping --disable
@@ -82,6 +83,7 @@ ducktape-alias
 ### Taping Mode
 
 `taping` mode keeps the current directory on a plain tmux shell session instead of an agent session.
+`taping` mode enables an agent → tap → shell cycle for the current directory.
 
 ```zsh
 ducktape-taping --enable
@@ -89,7 +91,7 @@ ducktape-taping --show
 ducktape-taping --disable
 ```
 
-When enabled, `F2` opens the tap session for that directory. When disabled, `F2` returns to the normal agent flow.
+When enabled, `F2` first opens the agent session, then switches to the tap session, then detaches back to shell.
 
 ### Run Parameters
 

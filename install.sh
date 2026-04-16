@@ -100,7 +100,7 @@ else
 # ducktape
 set -g mouse on
 set -g history-limit 100000
-bind-key -n F2 detach-client
+bind-key -n F2 run-shell 'zsh -lc "source \"$HOME/.zsh/shell-agents-tmux.zsh\"; ducktape-tmux-f2"'
 bind-key -n F12 run-shell '\
   AGENT=$(cat "$HOME/.zsh/.ducktape-agent" 2>/dev/null || echo claude); \
   GPARAMS=$(cat "$HOME/.zsh/.ducktape-params" 2>/dev/null); \

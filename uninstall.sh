@@ -25,7 +25,7 @@ strip_ducktape_tmux_block() {
   [[ -f "$file" ]] || return 0
 
   perl -0pi -e 's/\n?# ducktape\n.*?\n# \/ducktape\n/\n/s' "$file"
-  sed -i '' '/bind-key -n F2 detach-client/d' "$file"
+  sed -i '' '/bind-key -n F2 /d' "$file"
   sed -i '' '/bind-key -n F12 run-shell/d' "$file"
   sed -i '' '/bind-key a display-popup/d' "$file"
   sed -i '' '/set -g mouse on/d' "$file"
