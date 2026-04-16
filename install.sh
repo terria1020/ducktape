@@ -101,7 +101,7 @@ else
 set -g mouse on
 set -g history-limit 100000
 bind-key -n F2 run-shell 'zsh -lc "source \"$HOME/.zsh/shell-agents-tmux.zsh\"; ducktape-tmux-f2"'
-bind-key -n F12 run-shell 'zsh -lc "source \"$HOME/.zsh/shell-agents-tmux.zsh\"; ducktape-tmux-f12"'
+bind-key -n F10 run-shell 'zsh -lc "source \"$HOME/.zsh/shell-agents-tmux.zsh\"; ducktape-tmux-f12"'
 bind-key a display-popup -E \
   "tmux ls 2>/dev/null | grep ducktape | cut -d: -f1 | fzf --prompt='agent> ' --height=10 | xargs -I{} tmux switch-client -t {}"
 bind -T copy-mode MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy"
@@ -122,7 +122,7 @@ echo -e "${GREEN}─────────────────────
 echo -e "${BOLD}설치 완료!${NC} 에이전트: ${BOLD}$SELECTED${NC}"
 echo ""
 echo "  F2            → $SELECTED attach/detach 토글"
-echo "  F12           → bind된 디렉토리 세션 순환"
+echo "  F10           → bind된 디렉토리 세션 순환"
 echo "  Ctrl-B a      → 세션 목록 fzf 피커"
 echo ""
 echo "  ducktape-alias     → 에이전트 변경"

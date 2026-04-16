@@ -10,7 +10,7 @@
 
 tmux-based AI agent session manager.
 Toggle attach/detach with a single key (F2), with automatic per-directory session management.
-Optional `taping` bindings let F12 cycle through a saved list of per-directory agent sessions.
+Optional `taping` bindings let F10 cycle through a saved list of per-directory agent sessions.
 
 ## Install
 
@@ -33,7 +33,7 @@ Optional `taping` bindings let F12 cycle through a saved list of per-directory a
 |-----|---------|--------|
 | `F2` | Shell prompt | Attach to agent session for current directory (creates one if none exists) |
 | `F2` | Inside agent | Detach → return to shell |
-| `F12` | Inside agent | Cycle to the next bound directory session |
+| `F10` | Inside agent | Cycle to the next bound directory session |
 | `Ctrl-B a` | Anywhere in tmux | fzf picker for all ducktape sessions |
 
 ### Per-directory Sessions
@@ -53,15 +53,15 @@ With session bindings:
 ~/project-a $ ducktape-taping bind
 ~/project-b $ ducktape-taping bind
 ~/project-a $ F2   →  ducktape-claude-a1b2c3d4
-~/project-a $ F12  →  ducktape-claude-e5f6g7h8
-~/project-b $ F12  →  ducktape-claude-a1b2c3d4
+~/project-a $ F10  →  ducktape-claude-e5f6g7h8
+~/project-b $ F10  →  ducktape-claude-a1b2c3d4
 ```
 
 ### Commands
 
 ```zsh
 ducktape-alias      # Switch agent interactively
-ducktape-taping     # Manage bound directories for F12 cycling
+ducktape-taping     # Manage bound directories for F10 cycling
 ducktape-param      # Manage run parameters (global / local)
 ducktape-status     # Show session status for current directory
 ducktape-ls         # List all ducktape sessions
@@ -81,7 +81,7 @@ ducktape-alias
 ### Taping Bindings
 
 `ducktape-taping` manages a circular list of bound directories.
-F12 moves between the bound directories in saved order.
+F10 moves between the bound directories in saved order.
 Entries are deduplicated by path, and missing directories are pruned automatically.
 
 ```zsh
@@ -97,7 +97,7 @@ Behavior:
 - `clear`: remove the entire bind list
 - `--show`: print the saved order and mark the current directory
 
-If a bound directory's agent session is not running, F12 starts it on demand.
+If a bound directory's agent session is not running, F10 starts it on demand.
 
 ### Run Parameters
 
@@ -132,7 +132,7 @@ ducktape-param local clear
 
 The local `.ducktape-params` file can be committed to a project repo or added to `.gitignore` — your choice.
 
-> **Note for existing installs:** the F12 binding in `~/.tmux.conf` was written at install time and does not auto-update. Re-run the installer to get the circular binding handler.
+> **Note for existing installs:** the F10 binding in `~/.tmux.conf` was written at install time and does not auto-update. Re-run the installer to get the circular binding handler.
 
 ## Uninstall
 
@@ -153,10 +153,10 @@ rm ~/.zsh/shell-agents-tmux.zsh ~/.zsh/.ducktape-agent
 ```
 ~/.zsh/shell-agents-tmux.zsh   # Main script
 ~/.zsh/.ducktape-agent         # Selected agent name
-~/.zsh/.ducktape-bindings      # Bound directory list for F12 cycling (optional)
+~/.zsh/.ducktape-bindings      # Bound directory list for F10 cycling (optional)
 ~/.zsh/.ducktape-params        # Global run parameters (optional)
 $PWD/.ducktape-params          # Local run parameters per project (optional)
-~/.tmux.conf                   # F2 / F12 / Ctrl-B a bindings
+~/.tmux.conf                   # F2 / F10 / Ctrl-B a bindings
 ```
 
 ## Scroll Behavior

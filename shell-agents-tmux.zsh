@@ -1,6 +1,6 @@
 #######################
 # ~/.zsh/shell-agents-tmux.zsh
-# ducktape — F2 attach/detach, F12 bound-session cycle
+# ducktape — F2 attach/detach, F10 bound-session cycle
 
 setopt PROMPT_SUBST
 
@@ -408,7 +408,7 @@ ducktape-uninstall() {
   if [[ -f "$HOME/.tmux.conf" ]]; then
     sed -i '' '/^# ducktape$/,/^# \/ducktape$/d' "$HOME/.tmux.conf"
     sed -i '' '/bind-key -n F2 /d' "$HOME/.tmux.conf"
-    sed -i '' '/bind-key -n F12 run-shell/d' "$HOME/.tmux.conf"
+    sed -i '' '/bind-key -n F10 run-shell/d' "$HOME/.tmux.conf"
     sed -i '' '/grep ducktape/d' "$HOME/.tmux.conf"
     tmux source-file "$HOME/.tmux.conf" 2>/dev/null || true
     print "✓ tmux.conf 정리"
