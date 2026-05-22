@@ -14,6 +14,7 @@ _DUCKTAPE_CONF="$HOME/.zsh/.ducktape-agent"
 _DUCKTAPE_AGENT=$(cat "$_DUCKTAPE_CONF" 2>/dev/null || echo "claude")
 _DUCKTAPE_GLOBAL_PARAMS_DIR="$HOME/.zsh"
 _DUCKTAPE_BIND_FILE="$HOME/.zsh/.ducktape-bindings"
+_DUCKTAPE_LAST_DETACH_PATH_FILE="$HOME/.zsh/.ducktape-last-detach-path"
 _DUCKTAPE_LEGACY_TAPING_FILE="$PWD/.ducktape-taping"
 
 _ducktape_dir_hash() {
@@ -186,7 +187,17 @@ _ducktape_attach_or_create_agent() {
     tmux new-session -d -s "$session" -c "$dir" $(_ducktape_cmd_for_dir "$dir") || return 1
     _ducktape_apply_theme "$session" "$dir"
   fi
-  BUFFER="tmux attach-session -t '$session'"
+  rm -f "$_DUCKTAPE_LAST_DETACH_PATH_FILE"
+  BUFFER="tmux attach-session -t '$session'; _ducktape_chdir_after_detach"
+}
+
+# F2 detach 직후 호출되어, detach 시점의 tmux 세션 경로로 호스트 셸을 이동시킨다.
+_ducktape_chdir_after_detach() {
+  local target
+  target=$(cat "$_DUCKTAPE_LAST_DETACH_PATH_FILE" 2>/dev/null)
+  rm -f "$_DUCKTAPE_LAST_DETACH_PATH_FILE"
+  [[ -n "$target" && -d "$target" ]] || return 0
+  cd "$target"
 }
 
 _ducktape_switch_or_create_agent() {
@@ -203,6 +214,13 @@ _ducktape_switch_or_create_agent() {
 }
 
 ducktape-tmux-f2() {
+  local cur
+  cur=$(tmux display-message -p "#{pane_current_path}" 2>/dev/null)
+  if [[ -n "$cur" && -d "$cur" ]]; then
+    print -r -- "$cur" > "$_DUCKTAPE_LAST_DETACH_PATH_FILE"
+  else
+    rm -f "$_DUCKTAPE_LAST_DETACH_PATH_FILE"
+  fi
   tmux detach-client
 }
 
@@ -532,6 +550,7 @@ ducktape-uninstall() {
   rm -f "$_DUCKTAPE_CONF"
   rm -f "$_DUCKTAPE_BIND_FILE"
   rm -f "$_DUCKTAPE_GLOBAL_PARAMS_DIR"/.ducktape-params-*
+  rm -f "$_DUCKTAPE_LAST_DETACH_PATH_FILE"
   rm -f "$_DUCKTAPE_LEGACY_TAPING_FILE"
   print "✓ 스크립트 제거"
 
