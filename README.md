@@ -10,7 +10,7 @@
 
 tmux-based AI agent session manager.
 Toggle attach/detach with a single key (F2), with automatic per-directory session management.
-Optional `taping` bindings let F10 cycle through a saved list of per-directory agent sessions.
+Optional `taping` bindings let F10 jump into the first bound session from a normal terminal, and cycle through saved per-directory sessions inside tmux.
 
 ## Install
 
@@ -33,6 +33,7 @@ Optional `taping` bindings let F10 cycle through a saved list of per-directory a
 |-----|---------|--------|
 | `F2` | Shell prompt | Attach to agent session for current directory (creates one if none exists) |
 | `F2` | Inside agent | Detach → return to shell |
+| `F10` | Normal terminal | Attach to the 1st path in the `ducktape-taping` list |
 | `F10` | Inside agent | Cycle to the next bound directory session |
 | `Ctrl-B a` | Anywhere in tmux | fzf picker for all ducktape sessions |
 
@@ -55,13 +56,15 @@ With session bindings:
 ~/project-a $ F2   →  ducktape-claude-a1b2c3d4
 ~/project-a $ F10  →  ducktape-claude-e5f6g7h8
 ~/project-b $ F10  →  ducktape-claude-a1b2c3d4
+~/anywhere  $ F10  →  attach to bound path #1
 ```
 
 ### Commands
 
 ```zsh
 ducktape-alias      # Switch agent interactively
-ducktape-taping     # Manage bound directories for F10 cycling
+ducktape-taping     # Manage numbered bound directories
+ducktape-jumping 1  # Attach/switch to bound path #1
 ducktape-param      # Manage run parameters (global / local)
 ducktape-status     # Show session status for current directory
 ducktape-ls         # List all ducktape sessions
@@ -82,8 +85,8 @@ ducktape-alias
 
 ### Taping Bindings
 
-`ducktape-taping` manages a circular list of bound directories.
-F10 moves between the bound directories in saved order.
+`ducktape-taping` manages a numbered circular list of bound directories.
+F10 from a normal terminal attaches to path #1, while F10 inside tmux moves between the bound directories in saved order.
 Entries are deduplicated by path, and missing directories are pruned automatically.
 
 ```zsh
@@ -97,9 +100,11 @@ Behavior:
 - `bind`: add the current directory once, preserving the original order if already bound
 - `unbind`: remove the current directory from the list
 - `clear`: remove the entire bind list
-- `--show`: print the saved order and mark the current directory
+- `--show`: print the saved order, `ducktape-jumping <number>` hints, and mark the current directory
 
-If a bound directory's agent session is not running, F10 starts it on demand.
+`ducktape-jumping <number>` ignores the current directory and attaches to that numbered bound path.
+If the target bound directory's agent session is not running, it is started on demand.
+If the list is empty or the number is out of range, ducktape fails without creating a session for the current directory.
 
 ### Session Bar
 
@@ -166,7 +171,7 @@ rm ~/.zsh/shell-agents-tmux.zsh ~/.zsh/.ducktape-agent
 ```
 ~/.zsh/shell-agents-tmux.zsh   # Main script
 ~/.zsh/.ducktape-agent         # Selected agent name
-~/.zsh/.ducktape-bindings      # Bound directory list for F10 cycling (optional)
+~/.zsh/.ducktape-bindings      # Numbered bound directory list (optional)
 ~/.zsh/.ducktape-params        # Global run parameters (optional)
 $PWD/.ducktape-params          # Local run parameters per project (optional)
 ~/.tmux.conf                   # F2 / F10 / Ctrl-B a bindings
