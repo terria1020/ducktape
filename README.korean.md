@@ -18,6 +18,12 @@ F2 하나로 attach/detach 토글, 디렉토리별 세션 자동 관리.
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/terria1020/ducktape/main/install.sh)"
 ```
 
+현재 디렉토리의 로컬 파일로 개발 설치하려면:
+
+```bash
+./install.sh --no-origin
+```
+
 ### 필요 조건
 
 - zsh

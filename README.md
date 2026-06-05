@@ -18,6 +18,12 @@ Optional `taping` bindings let F10 jump into the first bound session from a norm
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/terria1020/ducktape/main/install.sh)"
 ```
 
+For local development installs from the current directory:
+
+```bash
+./install.sh --no-origin
+```
+
 ### Requirements
 
 - zsh

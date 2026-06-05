@@ -9,12 +9,41 @@ ZSH_SCRIPT="$ZSH_DIR/shell-agents-tmux.zsh"
 AGENT_CONF="$ZSH_DIR/.ducktape-agent"
 TMUX_CONF="$HOME/.tmux.conf"
 ZSHRC="$HOME/.zshrc"
+INSTALL_FROM_ORIGIN=1
+LOCAL_SOURCE_DIR="$PWD"
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BOLD='\033[1m'; NC='\033[0m'
 info()    { echo -e "${BOLD}▶${NC} $*"; }
 success() { echo -e "${GREEN}✓${NC} $*"; }
 warn()    { echo -e "${YELLOW}!${NC} $*"; }
 error()   { echo -e "${RED}✗${NC} $*" >&2; exit 1; }
+
+usage() {
+  cat <<'EOF'
+Usage:
+  install.sh [--no-origin]
+
+Options:
+  --no-origin  Install shell-agents-tmux.zsh from the current directory instead of GitHub raw.
+  -h, --help   Show this help.
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --no-origin)
+      INSTALL_FROM_ORIGIN=0
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      error "알 수 없는 옵션: $1"
+      ;;
+  esac
+  shift
+done
 
 strip_ducktape_tmux_block() {
   local file="$1"
@@ -94,9 +123,18 @@ info "선택: $SELECTED"
 
 mkdir -p "$ZSH_DIR"
 
-info "shell-agents-tmux.zsh 다운로드 중..."
-curl -fsSL "https://raw.githubusercontent.com/terria1020/ducktape/main/shell-agents-tmux.zsh" -o "$ZSH_SCRIPT"
-success "스크립트 설치: $ZSH_SCRIPT"
+if [[ "$INSTALL_FROM_ORIGIN" -eq 1 ]]; then
+  info "shell-agents-tmux.zsh 다운로드 중..."
+  curl -fsSL "https://raw.githubusercontent.com/terria1020/ducktape/main/shell-agents-tmux.zsh" -o "$ZSH_SCRIPT"
+  success "원격 스크립트 설치: $ZSH_SCRIPT"
+else
+  LOCAL_ZSH_SCRIPT="$LOCAL_SOURCE_DIR/shell-agents-tmux.zsh"
+  [[ -f "$LOCAL_ZSH_SCRIPT" ]] || error "--no-origin 사용 시 현재 디렉토리에 shell-agents-tmux.zsh가 필요합니다: $LOCAL_SOURCE_DIR"
+
+  info "shell-agents-tmux.zsh 로컬 설치 중: $LOCAL_ZSH_SCRIPT"
+  cp "$LOCAL_ZSH_SCRIPT" "$ZSH_SCRIPT"
+  success "로컬 스크립트 설치: $ZSH_SCRIPT"
+fi
 
 echo "$SELECTED" > "$AGENT_CONF"
 success "에이전트 설정: $SELECTED → $AGENT_CONF"
