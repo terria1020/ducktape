@@ -18,10 +18,16 @@ F2 하나로 attach/detach 토글, 디렉토리별 세션 자동 관리.
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/terria1020/ducktape/main/install.sh)"
 ```
 
+현재 디렉토리의 로컬 파일로 개발 설치하려면:
+
+```bash
+./install.sh --no-origin
+```
+
 ### 필요 조건
 
 - zsh
-- tmux
+- tmux — 선택 사항, F2/F10 세션 기능에만 필요
 - AI 에이전트 1개 이상: `claude` / `gemini` / `codex` / `cursor`
 - (권장) `fzf` — 세션 피커 사용 시
 
@@ -63,6 +69,7 @@ F2 하나로 attach/detach 토글, 디렉토리별 세션 자동 관리.
 
 ```zsh
 ducktape-alias      # 에이전트 변경 (인터랙티브 선택)
+ducktape-call       # tmux 없이 지정 에이전트를 병합 파라미터로 실행
 ducktape-taping     # 번호 기반 bound 디렉토리 목록 관리
 ducktape-jumping 1  # bound 목록의 1번 경로 세션 attach/switch
 ducktape-param      # 실행 파라미터 관리 (글로벌/로컬)
@@ -81,6 +88,27 @@ ducktape-uninstall  # 완전 제거
 ducktape-alias
 # → 설치된 에이전트 목록에서 fzf로 선택
 # → 새 터미널부터 적용
+```
+
+### 직접 에이전트 호출
+
+tmux 세션을 만들거나 attach하지 않고, ducktape가 쓰는 병합 파라미터로
+명시한 에이전트를 바로 실행합니다.
+
+```zsh
+ducktape-call codex
+ducktape-call claude --verbose
+ducktape-call --print gemini
+```
+
+`ducktape-call <에이전트>`는 현재 `ducktape-alias` 설정을 읽거나 변경하지
+않습니다. 인자로 넘긴 에이전트 이름으로 해당 에이전트의 글로벌 파라미터
+파일을 찾고, 현재 디렉토리의 로컬 `.ducktape-params`를 뒤에 붙입니다.
+
+병합 순서:
+
+```text
+<에이전트 실행 파일> <해당 에이전트 글로벌 파라미터> <로컬 파라미터> <추가 파라미터>
 ```
 
 ### Taping 바인딩
@@ -124,7 +152,7 @@ curr: [my-project] next: [another-project]
 
 | 범위 | 파일 | 적용 시점 |
 |------|------|-----------|
-| **global** | `~/.zsh/.ducktape-params` | 모든 세션에 항상 적용 |
+| **global** | `~/.zsh/.ducktape-params-<에이전트>` | 해당 에이전트 실행 시 항상 적용 |
 | **local** | `$PWD/.ducktape-params` | 해당 디렉토리에서 시작한 세션에만 적용 |
 
 ```zsh
@@ -172,7 +200,7 @@ rm ~/.zsh/shell-agents-tmux.zsh ~/.zsh/.ducktape-agent
 ~/.zsh/shell-agents-tmux.zsh   # 메인 스크립트
 ~/.zsh/.ducktape-agent         # 선택된 에이전트 저장
 ~/.zsh/.ducktape-bindings      # 번호 기반 bound 디렉토리 목록 (선택)
-~/.zsh/.ducktape-params        # 글로벌 실행 파라미터 (선택)
+~/.zsh/.ducktape-params-<에이전트> # 에이전트별 글로벌 실행 파라미터 (선택)
 $PWD/.ducktape-params          # 프로젝트별 로컬 파라미터 (선택)
 ~/.tmux.conf                   # F2/F10/Ctrl-B a 바인딩
 ```

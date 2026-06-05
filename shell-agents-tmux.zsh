@@ -4,10 +4,9 @@
 
 setopt PROMPT_SUBST
 
+_DUCKTAPE_HAS_TMUX=1
 if ! command -v tmux &>/dev/null; then
-  print "⚠️  ducktape: tmux을 찾을 수 없습니다. 설치 후 다시 시도하세요." >&2
-  print "   brew install tmux" >&2
-  return 0
+  _DUCKTAPE_HAS_TMUX=0
 fi
 
 _DUCKTAPE_CONF="$HOME/.zsh/.ducktape-agent"
@@ -28,22 +27,41 @@ _ducktape_session_for_dir() {
   print "ducktape-${_DUCKTAPE_AGENT}-${hash:0:8}"
 }
 
-_ducktape_cmd_for_dir() {
-  local dir="${1:-$PWD}"
-  local agent
-  case "$_DUCKTAPE_AGENT" in
-    cursor) agent="agent" ;;
-    *)      agent="$_DUCKTAPE_AGENT" ;;
-  esac
+_ducktape_require_tmux() {
+  if (( _DUCKTAPE_HAS_TMUX )); then
+    return 0
+  fi
 
+  print "✗ tmux을 찾을 수 없습니다. 설치 후 다시 시도하세요." >&2
+  print "  brew install tmux" >&2
+  return 1
+}
+
+_ducktape_agent_executable() {
+  local agent="$1"
+  case "$agent" in
+    cursor) agent="agent" ;;
+  esac
+  print "$agent"
+}
+
+_ducktape_cmd_for_agent_dir() {
+  local agent_name="$1"
+  local dir="${2:-$PWD}"
+  local agent=$(_ducktape_agent_executable "$agent_name")
   local gp lp
-  gp=$(cat "$_DUCKTAPE_GLOBAL_PARAMS_DIR/.ducktape-params-${_DUCKTAPE_AGENT}" 2>/dev/null)
+  gp=$(cat "$_DUCKTAPE_GLOBAL_PARAMS_DIR/.ducktape-params-${agent_name}" 2>/dev/null)
   lp=$(cat "$dir/.ducktape-params" 2>/dev/null)
 
   local cmd="$agent"
   [[ -n "$gp" ]] && cmd="$cmd $gp"
   [[ -n "$lp" ]] && cmd="$cmd $lp"
   print "$cmd"
+}
+
+_ducktape_cmd_for_dir() {
+  local dir="${1:-$PWD}"
+  _ducktape_cmd_for_agent_dir "$_DUCKTAPE_AGENT" "$dir"
 }
 
 _ducktape_bound_paths() {
@@ -151,6 +169,7 @@ _ducktape_apply_theme() {
   local session="$1"
   local dir="$2"
 
+  _ducktape_require_tmux || return 1
   tmux has-session -t "$session" 2>/dev/null || return 1
 
   local hash=$(_ducktape_dir_hash "$dir")
@@ -181,6 +200,8 @@ _ducktape_apply_theme() {
 }
 
 ducktape-refresh-theme() {
+  _ducktape_require_tmux || return 1
+
   local sessions
   sessions=$(tmux ls 2>/dev/null | grep "^ducktape-" | awk -F: '{print $1}')
   [[ -n "$sessions" ]] || return 0
@@ -195,6 +216,8 @@ ducktape-refresh-theme() {
 }
 
 _ducktape_attach_or_create_agent() {
+  _ducktape_require_tmux || return 1
+
   local dir="${1:-$PWD}"
   local session
 
@@ -248,6 +271,8 @@ _ducktape_chdir_after_detach() {
 }
 
 _ducktape_switch_or_create_agent() {
+  _ducktape_require_tmux || return 1
+
   local dir="$1"
   local session
 
@@ -257,6 +282,8 @@ _ducktape_switch_or_create_agent() {
 }
 
 ducktape-tmux-f2() {
+  _ducktape_require_tmux || return 1
+
   local cur
   cur=$(tmux display-message -p "#{pane_current_path}" 2>/dev/null)
   if [[ -n "$cur" && -d "$cur" ]]; then
@@ -268,6 +295,8 @@ ducktape-tmux-f2() {
 }
 
 ducktape-tmux-f12() {
+  _ducktape_require_tmux || return 1
+
   _ducktape_prune_bound_paths >/dev/null
 
   local current_dir
@@ -383,6 +412,61 @@ ducktape-alias() {
   print "  새 터미널 또는 'source ~/.zsh/shell-agents-tmux.zsh' 후 적용"
 }
 
+ducktape-call() {
+  local mode="run"
+
+  case "${1:-}" in
+    -h|--help|help)
+      print "사용법:"
+      print "  ducktape-call <에이전트> [추가 파라미터...]"
+      print "  ducktape-call --print <에이전트> [추가 파라미터...]"
+      print ""
+      print "설명:"
+      print "  ducktape-alias 설정은 변경하지 않고, 지정한 에이전트의 글로벌 파라미터와"
+      print "  현재 디렉토리의 로컬 파라미터를 병합해 에이전트를 실행합니다."
+      print ""
+      print "예:"
+      print "  ducktape-call codex"
+      print "  ducktape-call --print claude --verbose"
+      return 0
+      ;;
+    --print)
+      mode="print"
+      shift
+      ;;
+  esac
+
+  local agent_name="${1:-}"
+  if [[ -z "$agent_name" ]]; then
+    print "✗ 에이전트를 지정하세요: claude / gemini / codex / cursor"
+    return 1
+  fi
+  shift
+
+  local agent=$(_ducktape_agent_executable "$agent_name")
+  if ! command -v "$agent" &>/dev/null; then
+    print "✗ 실행 파일을 찾을 수 없습니다: $agent (${agent_name})"
+    return 1
+  fi
+
+  local gp lp
+  gp=$(cat "$_DUCKTAPE_GLOBAL_PARAMS_DIR/.ducktape-params-${agent_name}" 2>/dev/null)
+  lp=$(cat "$PWD/.ducktape-params" 2>/dev/null)
+
+  local -a cmd_args
+  cmd_args=("$agent")
+  [[ -n "$gp" ]] && cmd_args+=(${(Q)${(z)gp}})
+  [[ -n "$lp" ]] && cmd_args+=(${(Q)${(z)lp}})
+  (( $# > 0 )) && cmd_args+=("$@")
+
+  if [[ "$mode" == "print" ]]; then
+    print -r -- "${(q)cmd_args[@]}"
+    return 0
+  fi
+
+  command "${cmd_args[@]}"
+}
+
 ducktape-taping() {
   local action="${1:---show}"
 
@@ -401,6 +485,8 @@ ducktape-taping() {
       return 0
       ;;
     bind)
+      _ducktape_require_tmux || return 1
+
       if ! _ducktape_bound_path_exists "$PWD"; then
         local paths=()
         local entry
@@ -455,12 +541,16 @@ ducktape-taping() {
       else
         print "✓ 바인드 없음: $PWD"
       fi
-      ducktape-refresh-theme
+      if (( _DUCKTAPE_HAS_TMUX )); then
+        ducktape-refresh-theme
+      fi
       ;;
     clear)
       rm -f "$_DUCKTAPE_BIND_FILE"
       print "✓ 전체 바인드 초기화"
-      ducktape-refresh-theme
+      if (( _DUCKTAPE_HAS_TMUX )); then
+        ducktape-refresh-theme
+      fi
       ;;
     --show|show)
       _ducktape_prune_bound_paths >/dev/null
@@ -651,7 +741,8 @@ ducktape-uninstall() {
   print "ducktape를 제거합니다..."
 
   local sessions
-  sessions=$(tmux ls 2>/dev/null | grep "^ducktape-" | awk -F: '{print $1}')
+  sessions=""
+  (( _DUCKTAPE_HAS_TMUX )) && sessions=$(tmux ls 2>/dev/null | grep "^ducktape-" | awk -F: '{print $1}')
   if [[ -n "$sessions" ]]; then
     echo "$sessions" | xargs -I{} tmux kill-session -t {} 2>/dev/null
     print "✓ tmux 세션 종료"
@@ -660,6 +751,7 @@ ducktape-uninstall() {
   rm -f "$HOME/.zsh/shell-agents-tmux.zsh"
   rm -f "$_DUCKTAPE_CONF"
   rm -f "$_DUCKTAPE_BIND_FILE"
+  rm -f "$_DUCKTAPE_GLOBAL_PARAMS_DIR"/.ducktape-params
   rm -f "$_DUCKTAPE_GLOBAL_PARAMS_DIR"/.ducktape-params-*
   rm -f "$_DUCKTAPE_LAST_DETACH_PATH_FILE"
   rm -f "$_DUCKTAPE_LEGACY_TAPING_FILE"
@@ -675,8 +767,13 @@ ducktape-uninstall() {
     sed -i '' '/^# ducktape$/,/^# \/ducktape$/d' "$HOME/.tmux.conf"
     sed -i '' '/bind-key -n F2 /d' "$HOME/.tmux.conf"
     sed -i '' '/bind-key -n F10 run-shell/d' "$HOME/.tmux.conf"
+    sed -i '' '/bind-key -n F12 run-shell/d' "$HOME/.tmux.conf"
+    sed -i '' '/bind-key a display-popup/d' "$HOME/.tmux.conf"
+    sed -i '' '/bind-key a run-shell/d' "$HOME/.tmux.conf"
     sed -i '' '/grep ducktape/d' "$HOME/.tmux.conf"
-    tmux source-file "$HOME/.tmux.conf" 2>/dev/null || true
+    sed -i '' '/copy-pipe-and-cancel "pbcopy"/d' "$HOME/.tmux.conf"
+    sed -i '' '/clear-selection/d' "$HOME/.tmux.conf"
+    (( _DUCKTAPE_HAS_TMUX )) && tmux source-file "$HOME/.tmux.conf" 2>/dev/null || true
     print "✓ tmux.conf 정리"
   fi
 
@@ -708,7 +805,7 @@ ducktape-status() {
   else
     print "  binding: 없음"
   fi
-  if tmux has-session -t "$session" 2>/dev/null; then
+  if (( _DUCKTAPE_HAS_TMUX )) && tmux has-session -t "$session" 2>/dev/null; then
     print "● 세션 실행 중 ($session)"
   else
     print "○ 세션 없음 ($PWD)"
@@ -729,6 +826,8 @@ ducktape-kill() {
       print "  --bind-all   바인드된 디렉토리 세션 전체 종료"
       ;;
     --bind-all|bind-all)
+      _ducktape_require_tmux || return 1
+
       _ducktape_prune_bound_paths >/dev/null
 
       local paths=()
@@ -757,6 +856,8 @@ ducktape-kill() {
       print "총 ${killed}개 종료, ${missing}개 없음"
       ;;
     ""|current)
+      _ducktape_require_tmux || return 1
+
       local session=$(_ducktape_session_for_dir "$PWD")
       if tmux has-session -t "$session" 2>/dev/null; then
         tmux kill-session -t "$session"
@@ -787,13 +888,15 @@ ducktape-ls() {
       ;;
   esac
 
+  _ducktape_require_tmux || return 1
+
   print "── ducktape sessions ──"
   tmux ls 2>/dev/null | grep "^ducktape-" || print "(없음)"
 }
 
 precmd_ducktape_indicator() {
   local session=$(_ducktape_session_for_dir "$PWD")
-  if tmux has-session -t "$session" 2>/dev/null; then
+  if (( _DUCKTAPE_HAS_TMUX )) && tmux has-session -t "$session" 2>/dev/null; then
     DUCKTAPE_INDICATOR="%F{magenta}●${_DUCKTAPE_AGENT}%f"
   else
     DUCKTAPE_INDICATOR=""

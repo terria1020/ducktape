@@ -18,10 +18,16 @@ Optional `taping` bindings let F10 jump into the first bound session from a norm
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/terria1020/ducktape/main/install.sh)"
 ```
 
+For local development installs from the current directory:
+
+```bash
+./install.sh --no-origin
+```
+
 ### Requirements
 
 - zsh
-- tmux
+- tmux — optional, required only for F2/F10 session features
 - At least one AI agent: `claude` / `gemini` / `codex` / `cursor`
 - (recommended) `fzf` — for the session picker
 
@@ -63,6 +69,7 @@ With session bindings:
 
 ```zsh
 ducktape-alias      # Switch agent interactively
+ducktape-call       # Run an explicit agent with merged params, without tmux
 ducktape-taping     # Manage numbered bound directories
 ducktape-jumping 1  # Attach/switch to bound path #1
 ducktape-param      # Manage run parameters (global / local)
@@ -81,6 +88,27 @@ All user-facing commands support `--help`, `-h`, or `help`.
 ducktape-alias
 # → Select from detected agents via fzf
 # → Takes effect in new terminals
+```
+
+### Direct Agent Calls
+
+Run an explicit agent with the same merged parameters that ducktape uses, without
+creating or attaching to a tmux session.
+
+```zsh
+ducktape-call codex
+ducktape-call claude --verbose
+ducktape-call --print gemini
+```
+
+`ducktape-call <agent>` does not read or change the selected `ducktape-alias`
+agent. It uses the agent name you pass to find that agent's global parameter
+file, then appends the current directory's local `.ducktape-params`.
+
+Merge order:
+
+```text
+<agent executable> <global params for agent> <local params> <extra args>
 ```
 
 ### Taping Bindings
@@ -124,7 +152,7 @@ Parameters have two scopes that are merged at runtime:
 
 | Scope | File | Applied when |
 |-------|------|--------------|
-| **global** | `~/.zsh/.ducktape-params` | every session, everywhere |
+| **global** | `~/.zsh/.ducktape-params-<agent>` | every session for that agent |
 | **local** | `.ducktape-params` in `$PWD` | sessions started from that directory |
 
 ```zsh
@@ -172,7 +200,7 @@ rm ~/.zsh/shell-agents-tmux.zsh ~/.zsh/.ducktape-agent
 ~/.zsh/shell-agents-tmux.zsh   # Main script
 ~/.zsh/.ducktape-agent         # Selected agent name
 ~/.zsh/.ducktape-bindings      # Numbered bound directory list (optional)
-~/.zsh/.ducktape-params        # Global run parameters (optional)
+~/.zsh/.ducktape-params-<agent> # Agent-specific global run parameters (optional)
 $PWD/.ducktape-params          # Local run parameters per project (optional)
 ~/.tmux.conf                   # F2 / F10 / Ctrl-B a bindings
 ```
