@@ -38,8 +38,13 @@ echo ""
 
 info "의존성 확인 중..."
 
-command -v tmux &>/dev/null || error "tmux가 필요합니다: brew install tmux"
 command -v zsh  &>/dev/null || error "zsh가 필요합니다"
+
+HAS_TMUX=1
+if ! command -v tmux &>/dev/null; then
+  HAS_TMUX=0
+  warn "tmux 없음 — F2/F10 세션 기능은 비활성화됩니다 (brew install tmux)"
+fi
 
 if ! command -v fzf &>/dev/null; then
   warn "fzf 없음 — Ctrl-B a 피커 기능 제한됩니다 (brew install fzf)"
@@ -102,10 +107,11 @@ fi
 
 # ── tmux.conf 설정 ────────────────────────
 
-touch "$TMUX_CONF"
-strip_ducktape_tmux_block "$TMUX_CONF"
+if [[ "$HAS_TMUX" -eq 1 ]]; then
+  touch "$TMUX_CONF"
+  strip_ducktape_tmux_block "$TMUX_CONF"
 
-cat >> "$TMUX_CONF" << 'EOF'
+  cat >> "$TMUX_CONF" << 'EOF'
 
 # ducktape
 set -g mouse on
@@ -121,9 +127,12 @@ bind -T copy-mode-vi MouseDown1Pane send-keys -X clear-selection
 # /ducktape
 EOF
 
-success "tmux.conf 업데이트"
+  success "tmux.conf 업데이트"
 
-tmux source-file "$TMUX_CONF" 2>/dev/null && success "tmux 설정 적용" || true
+  tmux source-file "$TMUX_CONF" 2>/dev/null && success "tmux 설정 적용" || true
+else
+  warn "tmux.conf 설정 건너뜀 — ducktape-call은 사용 가능합니다"
+fi
 
 # ── 완료 ──────────────────────────────────
 
@@ -131,11 +140,16 @@ echo ""
 echo -e "${GREEN}────────────────────────────────────${NC}"
 echo -e "${BOLD}설치 완료!${NC} 에이전트: ${BOLD}$SELECTED${NC}"
 echo ""
-echo "  F2            → $SELECTED attach/detach 토글"
-echo "  F10           → bind된 디렉토리 세션 순환"
-echo "  Ctrl-B a      → 세션 목록 fzf 피커"
+if [[ "$HAS_TMUX" -eq 1 ]]; then
+  echo "  F2            → $SELECTED attach/detach 토글"
+  echo "  F10           → bind된 디렉토리 세션 순환"
+  echo "  Ctrl-B a      → 세션 목록 fzf 피커"
+else
+  echo "  tmux 없음     → F2/F10 세션 기능 비활성화"
+fi
 echo ""
 echo "  ducktape-alias     → 에이전트 변경"
+echo "  ducktape-call      → tmux 없이 지정 에이전트를 병합 파라미터로 실행"
 echo "  ducktape-taping    → bind/unbind/clear/show"
 echo "  ducktape-param     → 실행 파라미터 관리 (글로벌/로컬)"
 echo "  ducktape-status    → 현재 세션 상태"
