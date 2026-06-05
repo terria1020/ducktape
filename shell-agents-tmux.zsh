@@ -1,6 +1,6 @@
 #######################
 # ~/.zsh/shell-agents-tmux.zsh
-# ducktape — F2 attach/detach, F10 bound-session cycle
+# ducktape — F2 attach/detach, F10 bound-session cycle/jump
 
 setopt PROMPT_SUBST
 
@@ -115,6 +115,23 @@ _ducktape_prune_bound_paths() {
   return $changed
 }
 
+_ducktape_bound_path_at() {
+  local index="$1"
+
+  [[ "$index" == <-> ]] && (( index > 0 )) || return 2
+
+  _ducktape_prune_bound_paths >/dev/null
+
+  local paths=()
+  local entry
+  while IFS= read -r entry; do
+    [[ -n "$entry" ]] && paths+=("$entry")
+  done < <(_ducktape_bound_paths)
+
+  (( index <= ${#paths[@]} )) || return 1
+  print -r -- "${paths[index]}"
+}
+
 _ducktape_next_bound_label() {
   local dir="$1"
 
@@ -202,14 +219,44 @@ _ducktape_attach_or_create_agent() {
   _ducktape_require_tmux || return 1
 
   local dir="${1:-$PWD}"
+  local session
+
+  session=$(_ducktape_ensure_agent_session "$dir") || return 1
+
+  rm -f "$_DUCKTAPE_LAST_DETACH_PATH_FILE"
+  BUFFER="tmux attach-session -t '$session'; _ducktape_chdir_after_detach"
+}
+
+_ducktape_ensure_agent_session() {
+  local dir="$1"
   local session=$(_ducktape_session_for_dir "$dir")
 
   if tmux has-session -t "$session" 2>/dev/null; then
-    _ducktape_apply_theme "$session" "$dir"
+    _ducktape_apply_theme "$session" "$dir" || return 1
   else
     tmux new-session -d -s "$session" -c "$dir" $(_ducktape_cmd_for_dir "$dir") || return 1
-    _ducktape_apply_theme "$session" "$dir"
+    _ducktape_apply_theme "$session" "$dir" || return 1
   fi
+  print -r -- "$session"
+}
+
+_ducktape_attach_or_create_bound_agent() {
+  local dir="$1"
+  local session
+
+  session=$(_ducktape_ensure_agent_session "$dir") || return 1
+
+  rm -f "$_DUCKTAPE_LAST_DETACH_PATH_FILE"
+  tmux attach-session -t "$session"
+  _ducktape_chdir_after_detach
+}
+
+_ducktape_buffer_attach_or_create_bound_agent() {
+  local dir="$1"
+  local session
+
+  session=$(_ducktape_ensure_agent_session "$dir") || return 1
+
   rm -f "$_DUCKTAPE_LAST_DETACH_PATH_FILE"
   BUFFER="tmux attach-session -t '$session'; _ducktape_chdir_after_detach"
 }
@@ -227,14 +274,10 @@ _ducktape_switch_or_create_agent() {
   _ducktape_require_tmux || return 1
 
   local dir="$1"
-  local session=$(_ducktape_session_for_dir "$dir")
+  local session
 
-  if tmux has-session -t "$session" 2>/dev/null; then
-    _ducktape_apply_theme "$session" "$dir"
-  else
-    tmux new-session -d -s "$session" -c "$dir" $(_ducktape_cmd_for_dir "$dir") || return 1
-    _ducktape_apply_theme "$session" "$dir"
-  fi
+  session=$(_ducktape_ensure_agent_session "$dir") || return 1
+
   tmux switch-client -t "$session"
 }
 
@@ -295,15 +338,37 @@ _ducktape_f2_widget() {
   zle accept-line
 }
 
+_ducktape_f10_widget() {
+  local dir
+  dir=$(_ducktape_bound_path_at 1) || {
+    print "✗ jumping 대상 없음: ducktape-taping bind로 먼저 1번 경로를 등록하세요."
+    zle reset-prompt
+    return 1
+  }
+  _ducktape_buffer_attach_or_create_bound_agent "$dir" || {
+    print "✗ 세션 생성 실패: $(_ducktape_session_for_dir "$dir")"
+    zle reset-prompt
+    return 1
+  }
+  zle accept-line
+}
+
 zle -N _ducktape_f2_widget
+zle -N _ducktape_f10_widget
 
 zmodload zsh/terminfo 2>/dev/null
 if [[ -n "${terminfo[kf2]}" ]]; then
   bindkey -M emacs "${terminfo[kf2]}" _ducktape_f2_widget
   bindkey -M viins "${terminfo[kf2]}" _ducktape_f2_widget
 fi
+if [[ -n "${terminfo[kf10]}" ]]; then
+  bindkey -M emacs "${terminfo[kf10]}" _ducktape_f10_widget
+  bindkey -M viins "${terminfo[kf10]}" _ducktape_f10_widget
+fi
 bindkey -M emacs $'\eOQ' _ducktape_f2_widget
 bindkey -M viins $'\eOQ' _ducktape_f2_widget
+bindkey -M emacs $'\e[21~' _ducktape_f10_widget
+bindkey -M viins $'\e[21~' _ducktape_f10_widget
 
 ducktape-alias() {
   case "${1:-}" in
@@ -414,7 +479,9 @@ ducktape-taping() {
       print "  ducktape-taping --show"
       print ""
       print "설명:"
-      print "  현재 디렉토리를 F10 순환 목록에 추가/제거하거나 전체 목록을 확인합니다."
+      print "  현재 디렉토리를 numbered bound 목록에 추가/제거하거나 전체 목록을 확인합니다."
+      print "  일반 터미널 F10 또는 ducktape-jumping <번호>로 해당 번호 세션에 붙습니다."
+      print "  tmux 안 F10은 이 목록을 저장 순서대로 순환합니다."
       return 0
       ;;
     bind)
@@ -511,7 +578,7 @@ ducktape-taping() {
         else
           session_state="idle"
         fi
-        print "${i}. [${marker}] ${entry} (${session_state})"
+        print "${i}. [${marker}] ${entry} (${session_state})  -> ducktape-jumping ${i}"
       done
       ;;
     *)
@@ -523,6 +590,50 @@ ducktape-taping() {
       return 1
       ;;
   esac
+}
+
+ducktape-jumping() {
+  local index="${1:-}"
+
+  case "$index" in
+    -h|--help|help)
+      print "사용법:"
+      print "  ducktape-jumping <번호>"
+      print ""
+      print "설명:"
+      print "  현재 디렉토리와 무관하게 ducktape-taping 목록의 번호 경로 세션에 붙습니다."
+      print "  일반 터미널 F10은 ducktape-jumping 1과 같습니다."
+      return 0
+      ;;
+  esac
+
+  if [[ -z "$index" ]]; then
+    print "✗ 번호 필요: ducktape-jumping <번호>"
+    return 1
+  fi
+
+  if ! [[ "$index" == <-> ]] || (( index <= 0 )); then
+    print "✗ 잘못된 번호: $index"
+    return 1
+  fi
+
+  local dir
+  dir=$(_ducktape_bound_path_at "$index") || {
+    print "✗ jumping 대상 없음: ducktape-taping --show로 번호를 확인하세요."
+    return 1
+  }
+
+  if [[ -n "$TMUX" ]]; then
+    _ducktape_switch_or_create_agent "$dir" || {
+      print "✗ 세션 전환 실패: $(_ducktape_session_for_dir "$dir")"
+      return 1
+    }
+  else
+    _ducktape_attach_or_create_bound_agent "$dir" || {
+      print "✗ 세션 attach 실패: $(_ducktape_session_for_dir "$dir")"
+      return 1
+    }
+  fi
 }
 
 ducktape-param() {
@@ -640,6 +751,7 @@ ducktape-uninstall() {
   rm -f "$HOME/.zsh/shell-agents-tmux.zsh"
   rm -f "$_DUCKTAPE_CONF"
   rm -f "$_DUCKTAPE_BIND_FILE"
+  rm -f "$_DUCKTAPE_GLOBAL_PARAMS_DIR"/.ducktape-params
   rm -f "$_DUCKTAPE_GLOBAL_PARAMS_DIR"/.ducktape-params-*
   rm -f "$_DUCKTAPE_LAST_DETACH_PATH_FILE"
   rm -f "$_DUCKTAPE_LEGACY_TAPING_FILE"
@@ -655,7 +767,12 @@ ducktape-uninstall() {
     sed -i '' '/^# ducktape$/,/^# \/ducktape$/d' "$HOME/.tmux.conf"
     sed -i '' '/bind-key -n F2 /d' "$HOME/.tmux.conf"
     sed -i '' '/bind-key -n F10 run-shell/d' "$HOME/.tmux.conf"
+    sed -i '' '/bind-key -n F12 run-shell/d' "$HOME/.tmux.conf"
+    sed -i '' '/bind-key a display-popup/d' "$HOME/.tmux.conf"
+    sed -i '' '/bind-key a run-shell/d' "$HOME/.tmux.conf"
     sed -i '' '/grep ducktape/d' "$HOME/.tmux.conf"
+    sed -i '' '/copy-pipe-and-cancel "pbcopy"/d' "$HOME/.tmux.conf"
+    sed -i '' '/clear-selection/d' "$HOME/.tmux.conf"
     (( _DUCKTAPE_HAS_TMUX )) && tmux source-file "$HOME/.tmux.conf" 2>/dev/null || true
     print "✓ tmux.conf 정리"
   fi

@@ -21,9 +21,16 @@ strip_ducktape_tmux_block() {
   [[ -f "$file" ]] || return 0
 
   perl -0pi -e 's/\n?# ducktape\n.*?\n# \/ducktape\n/\n/s' "$file"
+  perl -0pi -e 's/\nbind-key -n F12 run-shell '\''\\\n.*?\n\s*tmux rename-session -t "\$TMP" "\$S"'\''\n/\n/s' "$file"
+  perl -0pi -e 's/\nbind-key a display-popup -E \\\n\s*".*?xargs -I\{\} tmux switch-client -t \{\}"\n/\n/s' "$file"
+  perl -0pi -e 's/\nbind-key a run-shell \\\n\s*'\''if command -v fzf .*?\n\s*fi'\''\n/\n/s' "$file"
   sed -i '' '/bind-key -n F2 /d' "$file"
   sed -i '' '/bind-key -n F10 run-shell/d' "$file"
+  sed -i '' '/bind-key -n F12 run-shell/d' "$file"
   sed -i '' '/bind-key a display-popup/d' "$file"
+  sed -i '' '/bind-key a run-shell/d' "$file"
+  sed -i '' '/copy-pipe-and-cancel "pbcopy"/d' "$file"
+  sed -i '' '/clear-selection/d' "$file"
 }
 
 echo ""
@@ -118,8 +125,12 @@ set -g mouse on
 set -g history-limit 100000
 bind-key -n F2 run-shell 'zsh -lc "source \"$HOME/.zsh/shell-agents-tmux.zsh\"; ducktape-tmux-f2"'
 bind-key -n F10 run-shell 'zsh -lc "source \"$HOME/.zsh/shell-agents-tmux.zsh\"; ducktape-tmux-f12"'
-bind-key a display-popup -E \
-  "tmux ls 2>/dev/null | grep ducktape | cut -d: -f1 | fzf --prompt='agent> ' --height=10 | xargs -I{} tmux switch-client -t {}"
+bind-key a run-shell \
+  'if command -v fzf >/dev/null 2>&1; then \
+     tmux display-popup -E "tmux ls 2>/dev/null | grep ducktape | cut -d: -f1 | fzf --prompt=\"agent> \" --height=10 | xargs -I{} tmux switch-client -t {}"; \
+   else \
+     tmux choose-session; \
+   fi'
 bind -T copy-mode MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy"
 bind -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy"
 bind -T copy-mode MouseDown1Pane send-keys -X clear-selection
@@ -142,7 +153,7 @@ echo -e "${BOLD}설치 완료!${NC} 에이전트: ${BOLD}$SELECTED${NC}"
 echo ""
 if [[ "$HAS_TMUX" -eq 1 ]]; then
   echo "  F2            → $SELECTED attach/detach 토글"
-  echo "  F10           → bind된 디렉토리 세션 순환"
+  echo "  F10           → 일반 터미널: 1번 bound 세션 진입 / tmux 안: bound 세션 순환"
   echo "  Ctrl-B a      → 세션 목록 fzf 피커"
 else
   echo "  tmux 없음     → F2/F10 세션 기능 비활성화"
@@ -150,7 +161,8 @@ fi
 echo ""
 echo "  ducktape-alias     → 에이전트 변경"
 echo "  ducktape-call      → tmux 없이 지정 에이전트를 병합 파라미터로 실행"
-echo "  ducktape-taping    → bind/unbind/clear/show"
+echo "  ducktape-taping    → 번호 기반 bind/unbind/clear/show"
+echo "  ducktape-jumping   → 번호로 bound 세션 attach/switch"
 echo "  ducktape-param     → 실행 파라미터 관리 (글로벌/로컬)"
 echo "  ducktape-status    → 현재 세션 상태"
 echo "  ducktape-ls        → 전체 세션 목록"

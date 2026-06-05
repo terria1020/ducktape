@@ -8,6 +8,7 @@ ZSH_DIR="$HOME/.zsh"
 ZSH_SCRIPT="$ZSH_DIR/shell-agents-tmux.zsh"
 AGENT_CONF="$ZSH_DIR/.ducktape-agent"
 BIND_FILE="$ZSH_DIR/.ducktape-bindings"
+LAST_DETACH_PATH_FILE="$ZSH_DIR/.ducktape-last-detach-path"
 TAPING_FILE="$PWD/.ducktape-taping"
 TMUX_CONF="$HOME/.tmux.conf"
 ZSHRC="$HOME/.zshrc"
@@ -26,9 +27,14 @@ strip_ducktape_tmux_block() {
   [[ -f "$file" ]] || return 0
 
   perl -0pi -e 's/\n?# ducktape\n.*?\n# \/ducktape\n/\n/s' "$file"
+  perl -0pi -e 's/\nbind-key -n F12 run-shell '\''\\\n.*?\n\s*tmux rename-session -t "\$TMP" "\$S"'\''\n/\n/s' "$file"
+  perl -0pi -e 's/\nbind-key a display-popup -E \\\n\s*".*?xargs -I\{\} tmux switch-client -t \{\}"\n/\n/s' "$file"
+  perl -0pi -e 's/\nbind-key a run-shell \\\n\s*'\''if command -v fzf .*?\n\s*fi'\''\n/\n/s' "$file"
   sed -i '' '/bind-key -n F2 /d' "$file"
   sed -i '' '/bind-key -n F10 run-shell/d' "$file"
+  sed -i '' '/bind-key -n F12 run-shell/d' "$file"
   sed -i '' '/bind-key a display-popup/d' "$file"
+  sed -i '' '/bind-key a run-shell/d' "$file"
   sed -i '' '/set -g mouse on/d' "$file"
   sed -i '' '/set -g history-limit 100000/d' "$file"
   sed -i '' '/copy-pipe-and-cancel "pbcopy"/d' "$file"
@@ -52,6 +58,8 @@ fi
 rm -f "$ZSH_SCRIPT"
 rm -f "$AGENT_CONF"
 rm -f "$BIND_FILE"
+rm -f "$LAST_DETACH_PATH_FILE"
+rm -f "$ZSH_DIR"/.ducktape-params
 rm -f "$ZSH_DIR"/.ducktape-params-*
 rm -f "$TAPING_FILE"
 success "설정 파일 제거"
